@@ -14,7 +14,7 @@ The core differentiator is the **Agent Core (Claude 3.5)** natively plugged into
 
 ## 📂 Architecture
 
-\`\`\`text
+```text
 familyOS/
 ├── app/                  # Next.js 14 App Router
 │   ├── (auth)/login      # Google OAuth login boundary
@@ -33,7 +33,7 @@ familyOS/
 │   ├── agent/            # Prompt builder and JSON execution parsing
 │   └── supabase/         # SSR and Realtime clients
 └── types/                # Strict TypeScript structural definitions
-\`\`\`
+```
 
 ## 🚀 How to Run Locally
 
@@ -44,15 +44,17 @@ familyOS/
 
 ### 2. Environment Setup
 Copy the example config and fill in the values:
-\`\`\`bash
+```bash
 cp .env.example .env.local
-\`\`\`
+```
 
 ### 3. Install & Start
-\`\`\`bash
+```bash
 npm install
+```
+```bash
 npm run dev
-\`\`\`
+```
 The application will launch on `http://localhost:3000`. You will be immediately redirected to the login page thanks to Next.js middleware.
 
 ## ✨ Features Currently Working
