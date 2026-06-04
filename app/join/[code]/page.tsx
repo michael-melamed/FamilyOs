@@ -81,7 +81,7 @@ export default function JoinHouseholdPage({ params }: { params: { code: string }
         throw new Error(data.error || 'שגיאה בהצטרפות לקבוצה');
       }
 
-      router.push(`/dashboard?active=${hid}`);
+      router.push(`/dashboard?active=${data.household_id}`);
     } catch (err: any) {
       setError(err.message || 'שגיאה כללית בהצטרפות');
       setJoining(false);
