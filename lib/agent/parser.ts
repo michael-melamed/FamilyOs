@@ -1,0 +1,180 @@
+import Anthropic from '@anthropic-ai/sdk';
+import { createClient } from '@/lib/supabase/server';
+import { loadMemory } from '@/lib/actions/memory';
+import type { Task } from '@/types';
+import type { AgentOutput, AgentAction } from './schema';
+
+/**
+ * @file parser.ts
+ * @description_he שולח פרומפט ל-Claude API עם זיכרון המשפחה, מחזיר AgentOutput
+ * @description_en Sends prompt to Claude API with family memory, returns AgentOutput
+ * @inputs    prompt: string, familyId: string, existingTasks: Task[]
+ * @outputs   Promise<AgentOutput>
+ * @depends_on lib/agent/schema.ts, lib/supabase/server.ts, ANTHROPIC_API_KEY env var
+ * @used_by   app/api/agent/route.ts
+ * @fix_guide
+ *   - "API key not found" → check ANTHROPIC_API_KEY in .env.local
+ *   - "404 model not_found_error" → update the model string below to the latest available Claude model
+ *   - "JSON parse error" → Claude returned non-JSON; add retry logic or check system prompt
+ *   - "task_id INFER:[...]" in actions → UI must resolve these against real task titles
+ * @integration_guide
+ *   1. Import parsePrompt from this file in app/api/agent/route.ts only
+ *   2. Pass familyId to load memory automatically
+ *   3. Pass current tasks array so agent can match task titles to IDs
+ */
+
+const SYSTEM_PROMPT = `
+You are a family task management assistant for an Israeli family.
+You receive a free-text message in Hebrew or English.
+You must parse it and return ONLY a valid JSON object — no markdown, no explanation, no text outside the JSON.
+
+Return this exact shape:
+{
+  "actions": [...],
+  "summary": "..."
+}
+
+Action types:
+{ "type": "COMPLETE_TASK",  "task_id": "INFER:[title]" }
+{ "type": "ADD_TASK",       "title": "...", "assignee": "..." }
+{ "type": "ADD_SHOPPING",   "item": "...",  "quantity": "..." }
+{ "type": "UPDATE_TASK",    "task_id": "INFER:[title]", "changes": { "status": "in_progress" } }
+{ "type": "UPDATE_MEMORY",  "key": "...", "value": "...", "category": "general|member|preference|routine" }
+{ "type": "NO_ACTION",      "message": "..." }
+
+Rules:
+1. Return ONLY valid JSON. Nothing else.
+2. "done", "גמרתי", "סיימתי", "הושלם", "✓" → COMPLETE_TASK
+3. "צריך", "תוסיף משימה", "יש לעשות" → ADD_TASK
+4. "תקנה", "קנה", "תוסיף לקניות", "חסר" → ADD_SHOPPING
+5. A name (תמר, מיכאל, ישי) in context of a task → set as assignee
+6. New personal info ("אני אוהב...", "אנחנו רגיל...") → UPDATE_MEMORY
+7. summary must ALWAYS be in Hebrew, 1-2 sentences max
+8. For COMPLETE_TASK and UPDATE_TASK: if no task_id is known, use "INFER:[task title from message]"
+9. One message can produce multiple actions — return all of them in the array
+`;
+
+export async function parsePrompt(prompt: string, familyId: string, currentTasks: Task[]): Promise<AgentOutput> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    console.log('No ANTHROPIC_API_KEY found, running in local fallback mode...');
+    const actions: AgentAction[] = [];
+    const lowerPrompt = prompt.toLowerCase();
+    
+    // Very basic fallback logic for generic offline demonstration overrides natively dynamically matching simple arrays
+    if (lowerPrompt.includes('קנה') || lowerPrompt.includes('תקנה') || lowerPrompt.includes('לקניות') || lowerPrompt.includes('חסר')) {
+      actions.push({ type: 'ADD_SHOPPING', item: prompt });
+    } else if (lowerPrompt.includes('סיימתי') || lowerPrompt.includes('גמרתי') || lowerPrompt.includes('הושלם') || lowerPrompt.includes('עשיתי')) {
+      if (currentTasks.length > 0) {
+        actions.push({ type: 'COMPLETE_TASK', task_id: currentTasks[0].id });
+      } else {
+        actions.push({ type: 'NO_ACTION', message: 'אין משימות פעילות להשלמה' });
+      }
+    } else {
+      actions.push({ type: 'ADD_TASK', title: prompt });
+    }
+
+    const fallbackOutput: AgentOutput = {
+      actions,
+      summary: 'מערכת במצב אוף-ליין: הפעולה בוצעה מקומית (בלי קלוד כרגע) בהצלחה',
+    };
+
+    const supabaseFallback = createClient();
+    const { data: userDataFB } = await supabaseFallback.auth.getUser();
+
+    await supabaseFallback.from('agent_logs').insert({
+      family_id: familyId,
+      user_id: userDataFB.user?.id || null,
+      prompt,
+      actions: fallbackOutput.actions,
+      summary: fallbackOutput.summary,
+    });
+
+    return fallbackOutput;
+  }
+
+  // Load family memory from Supabase
+  const memories = await loadMemory(familyId);
+  const memoryContext = memories.length > 0 
+    ? `Family Memory Context:\n${memories.map(m => `- ${m.key}: ${m.value} (${m.category})`).join('\n')}`
+    : 'No explicit family memory provided yet.';
+
+  const taskContext = currentTasks.length > 0
+    ? `Current active tasks:\n${currentTasks.map(t => `- ID: ${t.id} | Title: ${t.title}`).join('\n')}`
+    : 'No active tasks exist currently.';
+
+  try {
+    const anthropic = new Anthropic({ apiKey });
+
+    const message = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1000,
+      system: SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: `${memoryContext}\n\n${taskContext}\n\nUser request: "${prompt}"` }],
+    });
+
+    let rawJson = '';
+    for (const block of message.content) {
+      if (block.type === 'text') rawJson += block.text;
+    }
+
+    const parsedOutput = JSON.parse(rawJson.trim()) as AgentOutput;
+
+    parsedOutput.actions = parsedOutput.actions.map(action => {
+      if ((action.type === 'COMPLETE_TASK' || action.type === 'UPDATE_TASK') && action.task_id.startsWith('INFER:')) {
+        const inferred = action.task_id.replace('INFER:', '').trim().toLowerCase();
+        const match = currentTasks.find(t => t.title.toLowerCase().includes(inferred));
+        if (match) action.task_id = match.id;
+      }
+      return action;
+    });
+
+    const supabase = createClient();
+    const { data: userData } = await supabase.auth.getUser();
+    await supabase.from('agent_logs').insert({
+      family_id: familyId,
+      user_id: userData.user?.id || null,
+      prompt,
+      actions: parsedOutput.actions,
+      summary: parsedOutput.summary,
+    });
+
+    return parsedOutput;
+
+  } catch (apiErr: any) {
+    // Claude API unavailable (wrong key, model 404, quota) → fall back to local parser
+    console.warn('⚠️ Claude API error, using local fallback:', apiErr?.status ?? apiErr?.message);
+
+    const lowerPrompt = prompt.toLowerCase();
+    const actions: AgentAction[] = [];
+
+    if (lowerPrompt.includes('קנה') || lowerPrompt.includes('תקנה') || lowerPrompt.includes('לקניות') || lowerPrompt.includes('חסר')) {
+      actions.push({ type: 'ADD_SHOPPING', item: prompt });
+    } else if (lowerPrompt.includes('סיימתי') || lowerPrompt.includes('גמרתי') || lowerPrompt.includes('הושלם') || lowerPrompt.includes('עשיתי')) {
+      if (currentTasks.length > 0) {
+        actions.push({ type: 'COMPLETE_TASK', task_id: currentTasks[0].id });
+      } else {
+        actions.push({ type: 'NO_ACTION', message: 'אין משימות פעילות' });
+      }
+    } else {
+      actions.push({ type: 'ADD_TASK', title: prompt });
+    }
+
+    const fallback: AgentOutput = {
+      actions,
+      summary: '⚠️ Claude API לא זמין — הפעולה בוצעה מקומית',
+    };
+
+    const supabase = createClient();
+    const { data: userData } = await supabase.auth.getUser();
+    await supabase.from('agent_logs').insert({
+      family_id: familyId,
+      user_id: userData.user?.id || null,
+      prompt,
+      actions: fallback.actions,
+      summary: fallback.summary,
+    });
+
+    return fallback;
+  }
+}

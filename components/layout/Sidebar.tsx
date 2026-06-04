@@ -1,0 +1,212 @@
+'use client';
+
+/**
+ * @file components/layout/Sidebar.tsx
+ * @description_he תפריט צד — רשימת קבוצות, מעבר מהיר, הצטרפות ידנית, ייצוא ויציאה.
+ * @description_en Side menu — household switcher, manual join, task export, sign-out.
+ */
+
+import { useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import { loadMemory } from '@/lib/actions/memory';
+import type { FamilyMemory, Task } from '@/types';
+
+type SidebarProps = {
+  isOpen: boolean;
+  onClose: () => void;
+  householdId: string | undefined;
+  tasks: Task[] | undefined;
+  onSwitchHousehold?: (id: string) => void;
+};
+
+export function Sidebar({ isOpen, onClose, householdId, tasks = [], onSwitchHousehold }: SidebarProps) {
+  const [activePanel, setActivePanel] = useState<string | null>(null);
+  const [userHouseholds, setUserHouseholds] = useState<any[]>([]);
+
+  // Manual Join state
+  const [manualCode, setManualCode] = useState('');
+  const [joining, setJoining] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const fetchHouseholds = async () => {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data: memberships } = await supabase
+        .from('household_members')
+        .select('household_id, households(name)')
+        .eq('user_id', session.user.id);
+      
+      if (memberships) {
+        setUserHouseholds(memberships.map(m => ({
+          id: m.household_id,
+          name: (m.households as any)?.name || 'קבוצה ללא שם'
+        })));
+      }
+    };
+
+    fetchHouseholds();
+  }, [isOpen]);
+
+  const handleSignOut = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    window.location.href = '/login';
+  };
+
+  const handleManualJoin = async () => {
+    if (!manualCode.trim()) return;
+    setJoining(true);
+    setJoinError(null);
+    try {
+      const res = await fetch('/api/household/join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: manualCode.trim() })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'שגיאה בהצטרפות');
+      
+      if (onSwitchHousehold) {
+        onSwitchHousehold(data.household_id);
+      }
+      setActivePanel(null);
+      setManualCode('');
+    } catch (err: any) {
+      setJoinError(err.message);
+    } finally {
+      setJoining(false);
+    }
+  };
+
+  const handleExportTasks = () => {
+    if (!tasks || tasks.length === 0) {
+      alert('אין משימות לייצוא!');
+      return;
+    }
+    const lines = tasks.map(t => `${t.status === 'done' ? '✅' : '☐'} ${t.title}`);
+    const content = lines.join('\n');
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `family_tasks_${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const isPanelOpen = activePanel !== null;
+
+  return (
+    <>
+      <div 
+        className={`fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} 
+        onClick={onClose}
+      />
+      <aside 
+        className={`fixed top-0 bottom-0 right-0 w-80 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
+      >
+        <div className="bg-[#1B2A4A] text-white p-4 flex justify-between items-center shrink-0">
+          <div className="flex gap-2 items-center">
+            <h2 className="font-bold text-lg">תפריט</h2>
+          </div>
+          <button onClick={onClose} className="text-2xl p-2 hover:bg-[#2E4A7A] rounded-full transition-colors leading-none">
+            ✕
+          </button>
+        </div>
+
+        <div className="overflow-y-auto flex-1 p-4 flex flex-col gap-2 relative">
+          
+          <div className="flex flex-col gap-3">
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 px-1">הקבוצות שלי</h3>
+            
+            {userHouseholds.map(h => (
+              <div 
+                key={h.id}
+                onClick={() => onSwitchHousehold?.(h.id)}
+                className={`group p-3 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${h.id === householdId ? 'bg-[#1B2A4A] text-white border-[#1B2A4A] shadow-lg shadow-blue-900/20' : 'bg-white text-[#1B2A4A] border-[#C8D4E8] hover:border-[#1B2A4A]'}`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg ${h.id === householdId ? 'bg-white/20' : 'bg-gray-100 group-hover:bg-[#1B2A4A]/5'}`}>
+                    {h.name.charAt(0)}
+                  </div>
+                  <span className="font-bold truncate max-w-[140px]">{h.name}</span>
+                </div>
+                {h.id === householdId ? (
+                  <span className="text-white/60 text-xs">פעיל</span>
+                ) : (
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); window.location.href='/household/settings'; }}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity p-2 hover:bg-gray-100 rounded-lg"
+                    title="הגדרות קבוצה"
+                  >⚙️</button>
+                )}
+              </div>
+            ))}
+
+            <button 
+              onClick={() => setActivePanel('הצטרפות ידנית')}
+              className="mt-2 p-4 border-2 border-dashed border-[#C8D4E8] rounded-2xl text-gray-500 text-sm hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+            >
+              <span className="text-xl">+</span> הצטרף לקבוצה חדשה
+            </button>
+          </div>
+
+          <div className="mt-8 flex flex-col gap-2 border-t pt-6">
+            <a href="/household/settings" className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-xl transition-colors border border-transparent hover:border-gray-100">
+               <span className="text-xl">⚙️</span>
+               <span className="text-[#1B2A4A] font-medium">הגדרות קבוצה פעילה</span>
+            </a>
+            <button onClick={handleExportTasks} className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-xl transition-colors border border-transparent hover:border-gray-100">
+               <span className="text-xl">📄</span>
+               <span className="text-[#1B2A4A] font-medium">ייצוא משימות</span>
+            </button>
+          </div>
+
+          {activePanel === 'הצטרפות ידנית' && (
+            <div className="absolute inset-0 bg-white z-20 p-6 flex flex-col gap-4 animate-in slide-in-from-left-4 text-center">
+              <button onClick={() => setActivePanel(null)} className="self-start text-gray-400 p-2 hover:bg-gray-100 rounded-full">← חזרה</button>
+              <div className="text-5xl mb-2 mt-8">🔑</div>
+              <h3 className="font-bold text-[#1B2A4A] text-lg">הצטרפות לקבוצה</h3>
+              <p className="text-sm text-gray-500">הכנס את הקוד בן 6 התווים שקיבלת:</p>
+              <div className="mt-2">
+                <input 
+                  type="text"
+                  maxLength={6}
+                  value={manualCode}
+                  onChange={e => setManualCode(e.target.value.toUpperCase())}
+                  placeholder="XXX-XXX"
+                  className="w-full text-center text-2xl font-bold tracking-[0.2em] py-3 border-2 border-[#C8D4E8] rounded-xl focus:border-[#1A7A4A] outline-none transition-colors"
+                />
+                {joinError && <p className="text-red-500 text-xs mt-2">{joinError}</p>}
+                <button
+                  onClick={handleManualJoin}
+                  disabled={joining || manualCode.length < 6}
+                  className="w-full mt-4 bg-[#1A7A4A] text-white py-4 rounded-xl font-bold disabled:opacity-50 transition-opacity"
+                >
+                  {joining ? 'מתחבר...' : 'הצטרף עכשיו'}
+                </button>
+              </div>
+            </div>
+          )}
+
+        </div>
+
+        <div className="p-4 border-t border-[#C8D4E8] shrink-0">
+          <button
+            onClick={handleSignOut}
+            className="w-full flex items-center justify-center gap-2 text-sm text-red-500 hover:bg-red-50 border border-red-200 hover:border-red-300 rounded-xl py-2 transition-colors font-medium"
+          >
+            <span>🚪</span> יציאה מהחשבון
+          </button>
+        </div>
+      </aside>
+    </>
+  );
+}
