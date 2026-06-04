@@ -1,4 +1,4 @@
-# 🗂️ FamilyOS — Antigravity Mission Pack
+# 🗂️ FamilyOS — Mission Pack
 
 **Project:** FamilyOS — Family Task & Agent Manager  
 **Built for:** LiveCode / מיכאל מלמד  
