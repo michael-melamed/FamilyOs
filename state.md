@@ -1,15 +1,15 @@
 # Project State — FamilyOS
 
 ## Current Stage
-Layer 08 — Deployment & Quality Assurance
-Last completed: 08A (GitHub Push, TypeScript checks, and Vercel environment setup)
-Next: 02B (Fixing missing TypeScript definitions for Households, Lists, Permissions, and Invite Codes)
+All layers aligned with Layered Build Methodology.
+Last completed: 08B (Supabase Auth Redirect Whitelist & Vercel deployment with PWA icons)
+Next: Further feature enhancements or tasks as requested.
 
 ## Completed Tasks
 - **01A (Project Init):** Next.js 14 App Router project structured with README.md files in every folder.
 - **01B (Library Config):** Supabase client (browser & server), cookie handling, and route-protecting middleware configured.
 - **02A (Database Schema):** Applied migrations for the initial schema (`families`, `tasks`, `shopping_items`, `family_memory`, `agent_logs`), households schema (`households`, `household_members`, `household_permissions`, `invite_codes`, `lists`), and RLS fixes for shopping items.
-- **02B (TypeScript Types - Partial):** Basic models for Task, ShoppingItem, and FamilyMemory defined in `types/index.ts` (missing new household-related models).
+- **02B (TypeScript Types):** Full models for Household, HouseholdMember, HouseholdPermission, InviteCode, and List defined in `types/index.ts`.
 - **03A (Authentication):** Google OAuth login page, auth callback route, and dynamic origin redirection implemented.
 - **03B (Auto-Profile Bootstrapping):** Auto-creation of households and family members upon first login defined in `/auth/callback` callback route.
 - **04A-C (API & Actions):**
@@ -22,8 +22,8 @@ Next: 02B (Fixing missing TypeScript definitions for Households, Lists, Permissi
   - `/household/settings` for household management and invite code sharing.
   - `/household/setup` for onboarding.
   - `/join/[code]` for joining groups.
-- **07A (Platform - Partial):** `manifest.json` configured in `public/` (missing PWA icons and service worker setup).
-- **08A (Deployment):** Repository pushed to GitHub, TypeScript error-free (`npx tsc --noEmit` verified), Vercel environment variables mapped.
+- **07A (Platform):** Added `icon-192.png` and `icon-512.png` PWA assets to the `public/` directory.
+- **08B (Deployment):** Repository pushed to GitHub, verified type-safe (`npx tsc --noEmit`), and whitelisted OAuth callback URL on Supabase.
 
 ## Critical Decisions Made
 - **Additive Database Modeling:** The new `households` schema runs alongside the legacy `families` schema (using `household_id` and `family_id` for backward compatibility).
