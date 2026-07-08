@@ -19,6 +19,7 @@
  */
 import './globals.css'
 import type { Metadata } from 'next'
+import Script from 'next/script'
 
 export const metadata: Metadata = {
   title: 'FamilyOS',
@@ -37,7 +38,28 @@ export default function RootLayout({
         <meta name="theme-color" content="#1B2A4A" />
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
-      <body className="bg-[#F4F7FB] text-[#1B2A4A]">{children}</body>
+      <body className="bg-[#F4F7FB] text-[#1B2A4A]">
+        {children}
+        
+        {/* PWA Service Worker Registration */}
+        <Script id="register-sw" strategy="afterInteractive">
+          {`
+            if ('serviceWorker' in navigator) {
+              window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js').then(
+                  function(registration) {
+                    console.log('ServiceWorker registration successful');
+                  },
+                  function(err) {
+                    console.log('ServiceWorker registration failed: ', err);
+                  }
+                );
+              });
+            }
+          `}
+        </Script>
+      </body>
     </html>
   )
 }
+

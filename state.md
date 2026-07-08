@@ -9,9 +9,9 @@
 
 ## Current Stage
 
-**Layer 06 — UI (Complete)**
-Last completed: Sidebar restructure + TaskItem inline edit/delete (Mission 08)
-Next recommended: Layer 07 — PWA (manifest + service worker) OR feature work
+**Layer 07 — PWA (Complete)**
+Last completed: Added manifest.json, sw.js, and SW registration in layout (Mission 07)
+Next recommended: Feature work or improvements
 
 ---
 
@@ -35,6 +35,7 @@ Next recommended: Layer 07 — PWA (manifest + service worker) OR feature work
 - 06C: Header + Sidebar — `components/layout/` (household switcher, group list always open)
 - 06D: PromptBar — `components/prompt/PromptBar.tsx`
 - 06E: Join page — `app/join/[code]/page.tsx`
+- 07A: PWA Layer — `public/sw.js` and Service Worker registration in `layout.tsx`
 - 08A: Deployed to Vercel — GitHub Actions triggers auto-deploy on push to `main`
 - QA1: BUG fixes (Mission 08) — household_id in createTask, Board dynamic lists, RLS bypass for join, shopping RLS fix, realtime filter fix, TaskItem edit/delete
 
