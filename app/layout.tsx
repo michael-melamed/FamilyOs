@@ -18,14 +18,13 @@
  *   export default function RootLayout({ children }) { return <html><body>{children}</body></html>; }
  */
 import './globals.css'
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import Script from 'next/script'
 
 export const metadata: Metadata = {
   title: 'FamilyOS',
   description: 'מנהל משימות משפחתי חכם',
   manifest: '/manifest.json',
-  themeColor: '#1B2A4A',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
@@ -36,6 +35,11 @@ export const metadata: Metadata = {
     apple: '/icon-192.png',
   },
 }
+
+export const viewport: Viewport = {
+  themeColor: '#1B2A4A',
+}
+
 
 export default function RootLayout({
   children,
