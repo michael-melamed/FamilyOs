@@ -23,7 +23,7 @@ type PromptBarProps = {
 };
 
 export function PromptBar({ familyId, onAgentResponse }: PromptBarProps) {
-  const { prompt, setPrompt, submit, isLoading, error } = usePrompt(onAgentResponse);
+  const { prompt, setPrompt, submit, isLoading, error } = usePrompt(familyId, onAgentResponse);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // We explicitly fire native keyboard bindings for Enter bounds automatically resolving cleanly

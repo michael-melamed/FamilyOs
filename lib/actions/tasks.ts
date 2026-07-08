@@ -19,7 +19,7 @@
 import { createClient } from '@/lib/supabase/server';
 import type { Task, TaskStatus } from '@/types';
 
-export async function createTask(familyId: string, title: string, assignee?: string): Promise<Task> {
+export async function createTask(familyId: string, title: string, assignee?: string, list_id?: string): Promise<Task> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from('tasks')
@@ -28,6 +28,7 @@ export async function createTask(familyId: string, title: string, assignee?: str
       household_id: familyId,
       title,
       assignee: assignee || null,
+      list_id: list_id || null,
     })
     .select()
     .single();

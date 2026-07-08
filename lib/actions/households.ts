@@ -123,6 +123,20 @@ export async function createHouseholdForUser(
     console.error('Failed to create invite code:', codeErr.message);
   }
 
+  // 5. Create default lists — every new household gets "משימות" and "קניות" out of the box.
+  //    This runs here (not in the setup page) so OAuth-login users also get them automatically.
+  const { error: listsErr } = await adminClient
+    .from('lists')
+    .insert([
+      { household_id, name: 'משימות', created_by: userId },
+      { household_id, name: 'קניות', created_by: userId },
+    ]);
+
+  if (listsErr) {
+    // Non-fatal: user can create lists manually from settings
+    console.error('Failed to create default lists:', listsErr.message);
+  }
+
   const invite_url = `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/join/${code}`;
 
   return { household_id, invite_url };

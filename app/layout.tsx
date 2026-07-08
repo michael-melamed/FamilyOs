@@ -23,7 +23,18 @@ import Script from 'next/script'
 
 export const metadata: Metadata = {
   title: 'FamilyOS',
-  description: 'Family Task & Agent Manager',
+  description: 'מנהל משימות משפחתי חכם',
+  manifest: '/manifest.json',
+  themeColor: '#1B2A4A',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'FamilyOS',
+  },
+  icons: {
+    icon: '/icon-192.png',
+    apple: '/icon-192.png',
+  },
 }
 
 export default function RootLayout({
@@ -33,11 +44,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="he" dir="rtl">
-      <head>
-        <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#1B2A4A" />
-        <meta name="mobile-web-app-capable" content="yes" />
-      </head>
       <body className="bg-[#F4F7FB] text-[#1B2A4A]">
         {children}
         

@@ -1,14 +1,14 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@/lib/supabase/server';
 import { loadMemory } from '@/lib/actions/memory';
-import type { Task } from '@/types';
+import type { Task, List } from '@/types';
 import type { AgentOutput, AgentAction } from './schema';
 
 /**
  * @file parser.ts
- * @description_he שולח פרומפט ל-Claude API עם זיכרון המשפחה, מחזיר AgentOutput
- * @description_en Sends prompt to Claude API with family memory, returns AgentOutput
- * @inputs    prompt: string, familyId: string, existingTasks: Task[]
+ * @description_he שולח פרומפט ל-Claude API עם זיכרון המשפחה ורשימות זמינות, מחזיר AgentOutput
+ * @description_en Sends prompt to Claude API with family memory and available lists, returns AgentOutput
+ * @inputs    prompt: string, familyId: string, existingTasks: Task[], availableLists: Pick<List, 'id'|'name'>[]
  * @outputs   Promise<AgentOutput>
  * @depends_on lib/agent/schema.ts, lib/supabase/server.ts, ANTHROPIC_API_KEY env var
  * @used_by   app/api/agent/route.ts
@@ -21,9 +21,10 @@ import type { AgentOutput, AgentAction } from './schema';
  *   1. Import parsePrompt from this file in app/api/agent/route.ts only
  *   2. Pass familyId to load memory automatically
  *   3. Pass current tasks array so agent can match task titles to IDs
+ *   4. Pass availableLists array so agent knows which lists exist (by id + name)
  */
 
-const SYSTEM_PROMPT = `
+const BASE_SYSTEM_PROMPT = `
 You are a family task management assistant for an Israeli family.
 You receive a free-text message in Hebrew or English.
 You must parse it and return ONLY a valid JSON object — no markdown, no explanation, no text outside the JSON.
@@ -36,7 +37,7 @@ Return this exact shape:
 
 Action types:
 { "type": "COMPLETE_TASK",  "task_id": "INFER:[title]" }
-{ "type": "ADD_TASK",       "title": "...", "assignee": "..." }
+{ "type": "ADD_TASK",       "title": "...", "assignee": "...", "list_id": "<list UUID or null>" }
 { "type": "ADD_SHOPPING",   "item": "...",  "quantity": "..." }
 { "type": "UPDATE_TASK",    "task_id": "INFER:[title]", "changes": { "status": "in_progress" } }
 { "type": "UPDATE_MEMORY",  "key": "...", "value": "...", "category": "general|member|preference|routine" }
@@ -52,16 +53,28 @@ Rules:
 7. summary must ALWAYS be in Hebrew, 1-2 sentences max
 8. For COMPLETE_TASK and UPDATE_TASK: if no task_id is known, use "INFER:[task title from message]"
 9. One message can produce multiple actions — return all of them in the array
+10. For ADD_TASK: if the user mentions a specific list name (e.g. "לרשימת X", "ברשימה X"), set list_id to that list's UUID from the available lists below. If no list is specified, set list_id to null.
 `;
 
-export async function parsePrompt(prompt: string, familyId: string, currentTasks: Task[]): Promise<AgentOutput> {
+export async function parsePrompt(
+  prompt: string,
+  familyId: string,
+  currentTasks: Task[],
+  availableLists: Pick<List, 'id' | 'name'>[] = []
+): Promise<AgentOutput> {
+  // Build the lists section for Claude
+  const listsContext = availableLists.length > 0
+    ? `Available lists in this household (use these IDs for ADD_TASK list_id):\n${availableLists.map(l => `- ID: ${l.id} | Name: ${l.name}`).join('\n')}`
+    : 'No custom lists found. Use list_id: null for all ADD_TASK actions.';
+
+  const SYSTEM_PROMPT = `${BASE_SYSTEM_PROMPT}\n${listsContext}`;
+
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     console.log('No ANTHROPIC_API_KEY found, running in local fallback mode...');
     const actions: AgentAction[] = [];
     const lowerPrompt = prompt.toLowerCase();
-    
-    // Very basic fallback logic for generic offline demonstration overrides natively dynamically matching simple arrays
+
     if (lowerPrompt.includes('קנה') || lowerPrompt.includes('תקנה') || lowerPrompt.includes('לקניות') || lowerPrompt.includes('חסר')) {
       actions.push({ type: 'ADD_SHOPPING', item: prompt });
     } else if (lowerPrompt.includes('סיימתי') || lowerPrompt.includes('גמרתי') || lowerPrompt.includes('הושלם') || lowerPrompt.includes('עשיתי')) {
@@ -71,7 +84,7 @@ export async function parsePrompt(prompt: string, familyId: string, currentTasks
         actions.push({ type: 'NO_ACTION', message: 'אין משימות פעילות להשלמה' });
       }
     } else {
-      actions.push({ type: 'ADD_TASK', title: prompt });
+      actions.push({ type: 'ADD_TASK', title: prompt, list_id: availableLists[0]?.id });
     }
 
     const fallbackOutput: AgentOutput = {
@@ -95,7 +108,7 @@ export async function parsePrompt(prompt: string, familyId: string, currentTasks
 
   // Load family memory from Supabase
   const memories = await loadMemory(familyId);
-  const memoryContext = memories.length > 0 
+  const memoryContext = memories.length > 0
     ? `Family Memory Context:\n${memories.map(m => `- ${m.key}: ${m.value} (${m.category})`).join('\n')}`
     : 'No explicit family memory provided yet.';
 
@@ -157,7 +170,7 @@ export async function parsePrompt(prompt: string, familyId: string, currentTasks
         actions.push({ type: 'NO_ACTION', message: 'אין משימות פעילות' });
       }
     } else {
-      actions.push({ type: 'ADD_TASK', title: prompt });
+      actions.push({ type: 'ADD_TASK', title: prompt, list_id: availableLists[0]?.id });
     }
 
     const fallback: AgentOutput = {
@@ -178,3 +191,5 @@ export async function parsePrompt(prompt: string, familyId: string, currentTasks
     return fallback;
   }
 }
+
+

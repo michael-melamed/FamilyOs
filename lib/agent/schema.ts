@@ -16,7 +16,7 @@ export type MemoryCategory = 'general' | 'member' | 'preference' | 'routine'
 
 export type AgentAction =
   | { type: 'COMPLETE_TASK';  task_id: string }
-  | { type: 'ADD_TASK';       title: string; assignee?: string }
+  | { type: 'ADD_TASK';       title: string; assignee?: string; list_id?: string }
   | { type: 'ADD_SHOPPING';   item: string; quantity?: string }
   | { type: 'UPDATE_TASK';    task_id: string; changes: Partial<Task> }
   | { type: 'UPDATE_MEMORY';  key: string; value: string; category: MemoryCategory }
