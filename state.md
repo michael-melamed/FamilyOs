@@ -1,40 +1,93 @@
 # Project State — FamilyOS
 
+> **HOW TO USE THIS FILE**
+> At the start of every new session, tell the agent:
+> "Read `state.md` and the README.md of the folder you'll be working in. Then proceed with task [XX]."
+> At the end of every task, the agent updates this file.
+
+---
+
 ## Current Stage
-All layers aligned with Layered Build Methodology.
-Last completed: 08B (Supabase Auth Redirect Whitelist & Vercel deployment with PWA icons)
-Next: Further feature enhancements or tasks as requested.
+
+**Layer 06 — UI (Complete)**
+Last completed: Sidebar restructure + TaskItem inline edit/delete (Mission 08)
+Next recommended: Layer 07 — PWA (manifest + service worker) OR feature work
+
+---
 
 ## Completed Tasks
-- **01A (Project Init):** Next.js 14 App Router project structured with README.md files in every folder.
-- **01B (Library Config):** Supabase client (browser & server), cookie handling, and route-protecting middleware configured.
-- **02A (Database Schema):** Applied migrations for the initial schema (`families`, `tasks`, `shopping_items`, `family_memory`, `agent_logs`), households schema (`households`, `household_members`, `household_permissions`, `invite_codes`, `lists`), and RLS fixes for shopping items.
-- **02B (TypeScript Types):** Full models for Household, HouseholdMember, HouseholdPermission, InviteCode, and List defined in `types/index.ts`.
-- **03A (Authentication):** Google OAuth login page, auth callback route, and dynamic origin redirection implemented.
-- **03B (Auto-Profile Bootstrapping):** Auto-creation of households and family members upon first login defined in `/auth/callback` callback route.
-- **04A-C (API & Actions):**
-  - POST `/api/agent` for AI natural language processing (Claude 3.5 Sonnet).
-  - POST `/api/household/join` for joining a household.
-  - Server Actions in `lib/actions/` for tasks, memory, households, and shopping management.
-- **05A (Custom Hooks):** `useBoard.ts` (realtime sync), `useHouseholdRealtime.ts` (active household monitoring), and `usePrompt.ts` (agent dispatching).
-- **06A-B (UI Screens):**
-  - Interactive `/dashboard` with inline editing/deleting of tasks.
-  - `/household/settings` for household management and invite code sharing.
-  - `/household/setup` for onboarding.
-  - `/join/[code]` for joining groups.
-- **07A (Platform):** Added `icon-192.png` and `icon-512.png` PWA assets to the `public/` directory.
-- **08B (Deployment):** Repository pushed to GitHub, verified type-safe (`npx tsc --noEmit`), and whitelisted OAuth callback URL on Supabase.
+
+- 01A: Project initialized — Next.js 14 App Router, folder structure, GEMINI.md
+- 01B: Supabase clients configured — `lib/supabase/client.ts`, `server.ts`, `auth.ts`, `realtime.ts`
+- 02A: Core schema migrated — `001_initial_schema.sql`, `002_household_schema.sql`, `007a_households.sql`, `008_shopping_rls_fix.sql`
+- 02B: TypeScript types created — `types/index.ts` (Task, ShoppingItem, FamilyMemory, Family)
+- 03A: Google OAuth login page — `app/(auth)/login/page.tsx` + `app/auth/callback/route.ts`
+- 03B: Auto-household creation on first login — `lib/actions/households.ts → createHouseholdForUser`
+- 04A: Agent API route — `app/api/agent/route.ts` (Claude 3.5, JSON parser, Server Actions)
+- 04B: Household join API — `app/api/household/join/route.ts` (RLS bypass via service role)
+- 04C: Invite regenerate API — `app/api/household/invite/regenerate/route.ts`
+- 04D: Household settings API — `app/household/settings/page.tsx`
+- 05A: Board hook — `hooks/useBoard.ts` (realtime, tasks + shopping + lists + permissions)
+- 05B: Prompt hook — `hooks/usePrompt.ts`
+- 05C: Household realtime hook — `hooks/useHouseholdRealtime.ts`
+- 06A: Dashboard page — `app/dashboard/page.tsx` (multi-household, URL param active switch)
+- 06B: Board + TaskList + TaskItem + ShoppingList — `components/dashboard/`
+- 06C: Header + Sidebar — `components/layout/` (household switcher, group list always open)
+- 06D: PromptBar — `components/prompt/PromptBar.tsx`
+- 06E: Join page — `app/join/[code]/page.tsx`
+- 08A: Deployed to Vercel — GitHub Actions triggers auto-deploy on push to `main`
+- QA1: BUG fixes (Mission 08) — household_id in createTask, Board dynamic lists, RLS bypass for join, shopping RLS fix, realtime filter fix, TaskItem edit/delete
+
+---
 
 ## Critical Decisions Made
-- **Additive Database Modeling:** The new `households` schema runs alongside the legacy `families` schema (using `household_id` and `family_id` for backward compatibility).
-- **Service Role RLS Bypass:** Using `SUPABASE_SERVICE_ROLE_KEY` inside server-side invite/join endpoints to bypass Row Level Security constraints for non-member lookup.
-- **Comprehensive Folder documentation:** Strict adherence to folder-specific `README.md` files describing components, routes, and hooks.
+
+- **Dual schema (legacy + new):** `households` / `household_members` are the source of truth. Legacy `families` / `family_members` tables are backfilled on creation and join for `shopping_items` RLS compatibility.
+- **Server Actions over API Routes for mutations:** tasks, shopping, memory use `'use server'` actions. Auth-sensitive ops (join, invite) use API Routes.
+- **household_id is the primary filter:** All queries in `useBoard.ts` filter by `household_id`. `shopping_items` still uses `family_id` (same UUID value, different column name).
+- **Agent uses Claude 3.5** via Anthropic SDK. Has JSON-mode parser + Hebrew keyword fallback parser.
+- **Realtime filter:** `tasks` and `lists` use `household_id=eq.${id}`. `shopping_items` uses `family_id=eq.${id}`.
+- **Service role key** is used server-side only for: household creation, invite code lookup, household join, invite regeneration.
+- **Middleware** protects all routes except `/login`, `/invite`, `/api/*`, `/auth/*`.
+
+---
 
 ## Critical Files
-- `lib/supabase/client.ts` — Client-side Supabase initializer
-- `lib/supabase/server.ts` — Server-side Supabase client (SSR)
-- `middleware.ts` — Auth routing guard
-- `types/index.ts` — TypeScript types
-- `app/auth/callback/route.ts` — OAuth callback & onboarding bootstrap
-- `app/join/[code]/page.tsx` — Invite page
-- `components/dashboard/Board.tsx` — Main dashboard layout
+
+| File | Purpose |
+|------|---------|
+| `lib/supabase/client.ts` | Browser Supabase client |
+| `lib/supabase/server.ts` | Server Supabase client (SSR cookies) |
+| `lib/supabase/realtime.ts` | `useRealtimeTable` hook |
+| `lib/actions/tasks.ts` | createTask, updateTask, deleteTask, completeTask |
+| `lib/actions/households.ts` | createHouseholdForUser, getInviteInfo, updateHouseholdName |
+| `lib/actions/shopping.ts` | shopping item CRUD |
+| `lib/actions/memory.ts` | agent memory CRUD |
+| `lib/agent/parser.ts` | Claude JSON response parser + fallback keyword parser |
+| `lib/agent/schema.ts` | Agent action schema |
+| `types/index.ts` | All TypeScript types |
+| `middleware.ts` | Route protection + session refresh |
+| `next.config.js` | Next.js config (Server Actions origins — dynamic from NEXT_PUBLIC_APP_URL) |
+| `supabase/migrations/007a_households.sql` | Full household schema with RLS |
+| `supabase/migrations/008_shopping_rls_fix.sql` | Shopping items RLS fix (run manually in Supabase SQL editor) |
+
+---
+
+## Environment Variables Required
+
+```
+NEXT_PUBLIC_SUPABASE_URL        — Supabase project URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY   — Supabase anon/public key
+SUPABASE_SERVICE_ROLE_KEY       — Supabase service role key (server only, never browser)
+ANTHROPIC_API_KEY               — Anthropic Claude API key
+NEXT_PUBLIC_APP_URL             — Full app URL (e.g. https://family-os.vercel.app)
+```
+
+---
+
+## Known Remaining Issues / Next Steps
+
+- [ ] `types/index.ts` is missing: `Household`, `HouseholdMember`, `HouseholdPermissions`, `InviteCode`, `List` types and `household_id` in `Task`
+- [ ] PWA layer (Layer 07) not started — no `manifest.json`, no service worker
+- [ ] `supabase/migrations/008_shopping_rls_fix.sql` must be run manually in Supabase SQL Editor
+- [ ] `NEXT_PUBLIC_APP_URL` in Vercel must be updated to the real Vercel domain after first deploy

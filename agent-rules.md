@@ -1,76 +1,150 @@
-# Agent System Rules — FamilyOS
+# agent-rules.md — FamilyOS
 
-You are an expert AI developer assistant. Before performing any code changes, read the rules and instructions in this file.
+> Paste this file into the agent's system settings (not the chat).
+> The agent reads this before every session.
 
-## 🎯 Project Identity
+---
+
+## Project Identity
+
 - **Name:** FamilyOS
-- **Goal:** Shared family task and shopping list manager with dynamic AI-agent command-line.
-- **Stack:** Next.js 14 (App Router) + Supabase (DB/Auth/Realtime) + Anthropic Claude 3.5 Sonnet API + Tailwind CSS v4 + PWA.
-- **Deployment:** Vercel.
+- **Stack:** Next.js 14 (App Router) + Supabase (Auth + DB + Realtime) + Anthropic Claude 3.5 + Tailwind CSS v4
+- **Platform:** Web (PWA planned — Layer 07)
+- **Deployment:** Vercel (auto-deploy from `main` branch on GitHub)
+- **Repo:** https://github.com/michael-melamed/FamilyOs.git
+- **Language:** Hebrew UI, English code & comments
+- **Agent:** Antigravity (Google DeepMind)
 
 ---
 
-## 🛡️ Iron Rules
-1. **README in Every Folder:** Every folder must contain a `README.md` describing its purpose, contents, and integrations. If a new folder is created, write a `README.md` first.
-2. **One Layer at a Time:** Never skip layers. Complete and test Layer $N$ before starting Layer $N+1$.
-3. **No UI Before API:** Create database tables and API/Server Action backend logic before building the UI components.
-4. **Token Efficiency:**
-   - Always read existing files before editing them (read-before-write).
-   - Keep edits localized (do not replace whole files unless rewriting them from scratch is necessary).
-   - Update `state.md` at the end of every task execution.
+## Iron Rules
+
+1. **One layer at a time. No UI before API. No API before DB.**
+2. **Read `state.md` before every session. Update it after every task.**
+3. **Read the folder's `README.md` before editing any file in that folder.**
+4. **No new npm packages without explicit user approval.**
+5. **Never expose `SUPABASE_SERVICE_ROLE_KEY` or `ANTHROPIC_API_KEY` to the browser.** These are server-only.
+6. **Never hardcode secrets, URLs, or IDs.** Use environment variables.
+7. **TypeScript only.** No `.js` files in `app/`, `components/`, `lib/`, `hooks/`, `types/`.
+8. **Every new folder gets a `README.md`.**
+9. **`npx tsc --noEmit` must pass with zero errors before committing.**
+10. **Git: commit after every completed task. Message format: `[LayerXX] Short description`.**
 
 ---
 
-## 💻 Code & Quality Rules
-- **TypeScript:** Use strict TypeScript. Define types/interfaces in `types/` for all entities matching the database schema.
-- **Error Handling:** Use try-catch blocks in Server Actions and API routes. Return meaningful errors to the client.
-- **Secrets:** Never hardcode secrets. Always use `process.env` keys.
-- **Forbidden Actions:**
-   - Do not delete folders or files without explicit user approval.
-   - Do not install new npm packages without asking first.
+## Token Efficiency Rules
+
+- Read `state.md` → identify the current task → read only the files relevant to that task.
+- Never read `node_modules`, `.next`, or migration files unless explicitly debugging schema.
+- If a file is over 200 lines, read only the relevant section by line range.
+- Do not re-read files you already read in the same session unless they changed.
 
 ---
 
-## 📂 Project Folder Structure
-```text
+## Code Rules
+
+- **Error handling:** Every Server Action and API Route must have try/catch. Return `{ error: string }` on failure.
+- **API Routes return shape:** `{ data?: T, error?: string }` with appropriate HTTP status codes.
+- **Server Actions:** Use `'use server'` directive. Never call from client without wrapping in a try/catch.
+- **Client Components:** Use `'use client'` directive. Never import server-only modules.
+- **Imports:** Use `@/` alias for all internal imports (e.g. `import { createClient } from '@/lib/supabase/client'`).
+- **Types:** Import types with `import type { ... }` — never import type objects as values.
+- **No `any` types** unless absolutely necessary and commented with `// TODO: type this`.
+- **Comments:** Every file must have the JSDoc header block with `@file`, `@description_en`, `@depends_on`, `@used_by`, `@fix_guide`.
+
+---
+
+## Forbidden Actions
+
+- ❌ Do NOT delete any existing file without explicit user instruction.
+- ❌ Do NOT add a new database migration without showing the SQL to the user first.
+- ❌ Do NOT change RLS policies without showing the SQL and getting approval.
+- ❌ Do NOT install new npm packages without approval.
+- ❌ Do NOT modify `supabase/migrations/` files that have already been run — create a new numbered migration instead.
+- ❌ Do NOT use `console.log` in production code (use `console.error` for actual errors only).
+- ❌ Do NOT use `any` without a comment explaining why.
+
+---
+
+## Exact Folder Structure
+
+```
 familyOS/
-├── app/                  # Next.js 14 App Router
-│   ├── (auth)/           # Authentication boundaries (login, invite)
-│   ├── api/              # API Route endpoints (agent, household mutations)
-│   ├── auth/             # Supabase OAuth handlers
-│   ├── dashboard/        # Main app workspace
-│   ├── household/        # Settings & Setup panels
-│   └── join/             # Household joining by code
-├── components/           # React UI components
-│   ├── dashboard/        # Kanban board & list containers
-│   ├── layout/           # Sidebar & Header
-│   └── prompt/           # Agent Prompt bar
-├── hooks/                # Custom React Hooks
-├── lib/                  # Server-side logic & SDK initializers
-│   ├── actions/          # DB mutations via Server Actions
-│   ├── agent/            # Prompt engineering & JSON parsing logic
-│   └── supabase/         # SSR and realtime initializers
-├── public/               # Static assets & PWA files
-├── supabase/             # DB schema & migrations
-└── types/                # TypeScript interface definitions
+├── app/                        # Next.js 14 App Router
+│   ├── (auth)/login/           # Google OAuth login page
+│   ├── api/
+│   │   ├── agent/              # POST /api/agent — Claude execution
+│   │   └── household/
+│   │       ├── join/           # POST /api/household/join
+│   │       └── invite/
+│   │           └── regenerate/ # POST /api/household/invite/regenerate
+│   ├── auth/callback/          # GET /auth/callback — OAuth exchange
+│   ├── dashboard/              # Main dashboard page
+│   ├── household/
+│   │   └── settings/           # Household settings page
+│   └── join/[code]/            # Invite link landing page
+├── components/
+│   ├── dashboard/              # Board, TaskList, TaskItem, ShoppingList
+│   ├── layout/                 # Header, Sidebar
+│   └── prompt/                 # PromptBar
+├── hooks/                      # useBoard, usePrompt, useHouseholdRealtime
+├── lib/
+│   ├── actions/                # Server Actions: tasks, shopping, memory, households, families
+│   ├── agent/                  # parser.ts, schema.ts
+│   └── supabase/               # client.ts, server.ts, auth.ts, realtime.ts
+├── public/                     # Static assets (logo.png, future: manifest.json, sw.js)
+├── supabase/
+│   └── migrations/             # SQL migration files (run in Supabase SQL Editor)
+├── types/
+│   └── index.ts                # All TypeScript types
+├── middleware.ts               # Route protection
+├── next.config.js              # Next.js config
+├── state.md                    # ← Agent reads this every session
+└── agent-rules.md              # ← This file
 ```
 
 ---
 
-## 🔒 Required Environment Variables
-Ensure these names are defined in `.env.local` and Vercel dashboard:
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `ANTHROPIC_API_KEY`
-- `NEXT_PUBLIC_APP_URL`
+## Environment Variables (names only — never commit values)
+
+```
+NEXT_PUBLIC_SUPABASE_URL        # Supabase project URL (browser-safe)
+NEXT_PUBLIC_SUPABASE_ANON_KEY   # Supabase anon key (browser-safe)
+SUPABASE_SERVICE_ROLE_KEY       # Server only — never expose to browser
+ANTHROPIC_API_KEY               # Server only — never expose to browser
+NEXT_PUBLIC_APP_URL             # Full production URL (e.g. https://family-os.vercel.app)
+```
 
 ---
 
-## 📝 Task Completion Format
-When completing a task, output a brief summary with:
-1. **What was built/modified** (file paths)
-2. **Key implementation details**
-3. **Checklist verification results**
-4. **Next steps according to `familyos-plan.md`**
-5. **Update to `state.md`**
+## Task Completion Format
+
+At the end of every task, output this summary:
+
+```
+## ✅ Task Complete — [Task Number]: [Task Name]
+
+### What was done
+- [Bullet list of changes]
+
+### Files changed
+- [file path] — [one-line reason]
+
+### Checklist
+- [x] Item 1
+- [x] Item 2
+
+### What's next
+[Task Number + 1]: [Name of next task]
+
+### state.md updated
+Yes — Current Stage updated to [LayerXX].
+```
+
+---
+
+## Starting a New Session
+
+Tell the agent exactly this:
+
+> "Read `state.md` and the `README.md` of the folder you'll be working in. Then proceed with task [XX]."
