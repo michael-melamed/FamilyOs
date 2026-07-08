@@ -258,7 +258,7 @@ export default function HouseholdSettingsPage() {
     { id: 'memory', label: 'זיכרון הסוכן' },
     { id: 'members', label: 'משתתפים' },
     { id: 'permissions', label: 'הרשאות' },
-    { id: 'premium', label: 'מנוי פרימיום' },
+    // { id: 'premium', label: 'מנוי פרימיום' }, // Temporarily disabled placeholder
   ];
 
   const tabs = isAdmin ? allTabs : [
@@ -511,8 +511,8 @@ export default function HouseholdSettingsPage() {
             </div>
           )}
 
-          {/* Tab: Premium */}
-          {activeTab === 'premium' && (
+          {/* Tab: Premium (Placeholder - Temporarily Disabled) */}
+          {/* activeTab === 'premium' && (
             <div className="flex flex-col items-center justify-center py-12 text-center">
                <div className="text-6xl mb-6">⭐</div>
                <h2 className="text-2xl font-bold text-[#1B2A4A] mb-2">מנוי פרימיום</h2>
@@ -524,7 +524,7 @@ export default function HouseholdSettingsPage() {
                   <p className="text-orange-600 text-sm">התכונה נמצאת בפיתוח סופי</p>
                </div>
             </div>
-          )}
+          ) */}
 
         </div>
 
