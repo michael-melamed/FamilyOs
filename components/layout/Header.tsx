@@ -23,10 +23,11 @@ type HeaderProps = {
   updatedBy?: string;
   userName?: string;
   userAvatar?: string;
+  householdName?: string;
   onSignOut: () => void;
 };
 
-export function Header({ onMenuClick, hasRecentUpdate, updatedBy, userName, userAvatar, onSignOut }: HeaderProps) {
+export function Header({ onMenuClick, hasRecentUpdate, updatedBy, userName, userAvatar, householdName, onSignOut }: HeaderProps) {
   return (
     <header className="bg-[#1B2A4A] text-white flex items-center justify-between px-4 py-3 shadow-md sticky top-0 z-40">
       {/* Right side: hamburger + logo + name */}
@@ -38,14 +39,12 @@ export function Header({ onMenuClick, hasRecentUpdate, updatedBy, userName, user
         >
           ☰
         </button>
-        <Image
-          src="/logo.png"
-          alt="FamilyOS Logo"
-          width={36}
-          height={36}
-          className="rounded-lg shadow-sm"
-        />
-        <span className="font-bold text-2xl tracking-tight">FamilyOS</span>
+        <div className="flex flex-col">
+          <span className="font-bold text-2xl tracking-tight leading-none">FamilyOS</span>
+          {householdName && (
+            <span className="text-sm font-normal opacity-80 mt-1 leading-none">{householdName}</span>
+          )}
+        </div>
       </div>
 
       {/* Left side: realtime dot + user avatar + sign-out */}

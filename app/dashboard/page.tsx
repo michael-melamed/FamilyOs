@@ -30,6 +30,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [householdId, setHouseholdId] = useState<string | undefined>(undefined);
+  const [householdName, setHouseholdName] = useState<string | undefined>(undefined);
   const [successToast, setSuccessToast] = useState('');
   const [userName, setUserName] = useState<string | undefined>(undefined);
   const [userAvatar, setUserAvatar] = useState<string | undefined>(undefined);
@@ -55,7 +56,7 @@ export default function DashboardPage() {
 
         const { data: memberships } = await supabase
           .from('household_members')
-          .select('household_id');
+          .select('household_id, households(name)');
 
         if (!memberships || memberships.length === 0) {
           router.push('/household/setup');
@@ -64,9 +65,12 @@ export default function DashboardPage() {
 
         // If saved ID is valid for this user, use it. Otherwise use the first one.
         const isValid = savedId && memberships.some(m => m.household_id === savedId);
-        const targetId = isValid ? savedId : memberships[0].household_id;
+        const targetMembership = isValid ? memberships.find(m => m.household_id === savedId) : memberships[0];
+        const targetId = targetMembership.household_id;
+        const targetName = (targetMembership.households as any)?.name;
 
         setHouseholdId(targetId);
+        setHouseholdName(targetName);
         localStorage.setItem('active_household_id', targetId);
 
         // Clean up URL if we came from a join redirect
@@ -82,8 +86,9 @@ export default function DashboardPage() {
     fetchUserAndHousehold();
   }, [router]);
 
-  const handleSwitchHousehold = (id: string) => {
+  const handleSwitchHousehold = (id: string, name?: string) => {
     setHouseholdId(id);
+    if (name) setHouseholdName(name);
     localStorage.setItem('active_household_id', id);
     setIsSidebarOpen(false);
   };
@@ -110,6 +115,7 @@ export default function DashboardPage() {
         updatedBy={lastUpdatedBy}
         userName={userName}
         userAvatar={userAvatar}
+        householdName={householdName}
         onSignOut={handleSignOut}
       />
 
