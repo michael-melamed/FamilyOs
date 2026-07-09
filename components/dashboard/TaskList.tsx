@@ -35,12 +35,6 @@ export function TaskList({ listName = 'משימות', tasks, familyId, onUpdate,
         <h2 className="text-[#1B2A4A] font-bold text-xl flex items-center gap-2">
           <span>📋</span> {listName} {is_locked && <span title="רשימה נעולה">🔒</span>}
         </h2>
-        {can_add_tasks && !is_locked && (
-          {/* Placeholder: pending manual add task logic */}
-          <button className="text-sm bg-[#1B2A4A] text-white px-3 py-1 rounded-lg pointer-events-none opacity-40 transition-colors">
-            + הוסף משימה
-          </button>
-        )}
       </div>
       
       {activeTasks.length === 0 ? (
