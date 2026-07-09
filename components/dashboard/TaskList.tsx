@@ -39,7 +39,7 @@ export function TaskList({ listName = 'משימות', tasks, familyId, onUpdate,
       
       {activeTasks.length === 0 ? (
         <div className="bg-white rounded-xl shadow-sm p-8 text-center text-[#4A5568] border border-[#C8D4E8] border-dashed">
-          הכל עשוי! הוסף משימה לשמירה על הפעילות
+          הכל עשוי! 🎉
         </div>
       ) : (
         <div className={`bg-white rounded-xl shadow-sm border border-[#C8D4E8] overflow-hidden ${is_locked ? 'opacity-70 pointer-events-none' : ''}`}>

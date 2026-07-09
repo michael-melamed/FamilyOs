@@ -128,6 +128,17 @@ export async function parsePrompt(
     ? `Current active tasks:\n${currentTasks.map(t => `- ID: ${t.id} | Title: ${t.title}`).join('\n')}`
     : 'No active tasks exist currently.';
 
+  // Load shopping list from Supabase
+  const supabase = createClient();
+  const { data: shoppingItems } = await supabase
+    .from('shopping_items')
+    .select('*')
+    .eq('family_id', familyId);
+
+  const shoppingContext = shoppingItems && shoppingItems.length > 0
+    ? `Current items in the shopping list:\n${shoppingItems.map(item => `- Name: ${item.name} | Quantity: ${item.quantity || 'N/A'} | Checked: ${item.checked ? 'Yes' : 'No'}`).join('\n')}`
+    : 'The shopping list is currently empty.';
+
   try {
     const anthropic = new Anthropic({ apiKey });
 
@@ -135,7 +146,7 @@ export async function parsePrompt(
       model: 'claude-sonnet-4-6',
       max_tokens: 1000,
       system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: `${memoryContext}\n\n${taskContext}\n\nUser request: "${prompt}"` }],
+      messages: [{ role: 'user', content: `${memoryContext}\n\n${taskContext}\n\n${shoppingContext}\n\nUser request: "${prompt}"` }],
     });
 
     let rawJson = '';
