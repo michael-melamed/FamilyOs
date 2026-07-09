@@ -63,20 +63,21 @@ export function Header({ onMenuClick, hasRecentUpdate, updatedBy, userName, user
 
         {/* User avatar from Google OAuth */}
         {userAvatar ? (
-          <Image
-            src={userAvatar}
-            alt={userName ?? 'משתמש'}
-            width={32}
-            height={32}
-            className="rounded-full border-2 border-white/30"
-            title={userName}
-          />
+          <div className="rounded-full p-[2px] bg-brand-gradient flex items-center justify-center">
+            <Image
+              src={userAvatar}
+              alt={userName ?? 'משתמש'}
+              width={32}
+              height={32}
+              className="rounded-full"
+              title={userName}
+            />
+          </div>
         ) : userName ? (
-          <div
-            className="w-8 h-8 rounded-full bg-[#2E4A7A] border-2 border-white/30 flex items-center justify-center text-sm font-bold"
-            title={userName}
-          >
-            {userName.charAt(0).toUpperCase()}
+          <div className="rounded-full p-[2px] bg-brand-gradient flex items-center justify-center" title={userName}>
+            <div className="w-8 h-8 rounded-full bg-[#2E4A7A] flex items-center justify-center text-sm font-bold">
+              {userName.charAt(0).toUpperCase()}
+            </div>
           </div>
         ) : null}
 

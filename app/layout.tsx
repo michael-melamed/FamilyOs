@@ -48,7 +48,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="he" dir="rtl">
-      <body className="bg-[#F4F7FB] text-[#1B2A4A]">
+      <body className="bg-calm-bg text-calm-text">
         {children}
         
         {/* PWA Service Worker Registration */}

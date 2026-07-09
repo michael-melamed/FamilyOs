@@ -11,7 +11,7 @@ module.exports = {
         'brand-purple': '#4F46E5',
         'calm-bg': '#FAFAFA',
         'calm-text': '#1E1B4B',
-        'muted-warm': '#8C847B', // Soft grey mixed with beige
+        'muted-warm': '#6B7280',
       },
       backgroundImage: {
         'brand-gradient': 'linear-gradient(to left, #00C9A7, #4F46E5)',
