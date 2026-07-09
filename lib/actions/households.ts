@@ -44,17 +44,19 @@ export async function createHouseholdForUser(
   );
 
   // Guard: if this user already has a household_members row, return their existing household
-  const { data: existingMember } = await supabase
+  // We MUST use adminClient here, because during OAuth callback the session cookies are not yet
+  // available to createClient(), causing RLS to falsely return 0 rows for the regular client.
+  const { data: existingMembers } = await adminClient
     .from('household_members')
     .select('household_id')
     .eq('user_id', userId)
-    .single();
+    .limit(1);
 
-  if (existingMember) {
+  if (existingMembers && existingMembers.length > 0) {
     const code = generateInviteCode();
     // Return existing household — no new household created
     return {
-      household_id: existingMember.household_id,
+      household_id: existingMembers[0].household_id,
       invite_url: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/join/${code}`,
     };
   }
