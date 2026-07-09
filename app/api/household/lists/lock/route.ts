@@ -17,10 +17,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const body = await request.json().catch(() => ({}));
+  if (!body.household_id) {
+    return NextResponse.json({ error: 'Missing household_id' }, { status: 400 });
+  }
+
   const { data: membership } = await supabase
     .from('household_members')
     .select('household_id, role')
     .eq('user_id', session.user.id)
+    .eq('household_id', body.household_id)
     .single();
 
   if (!membership) {
@@ -31,7 +37,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Only admins can lock or unlock lists' }, { status: 403 });
   }
 
-  const { list_id, is_locked } = await request.json();
+  const { list_id, is_locked } = body;
 
   if (!list_id || typeof is_locked !== 'boolean') {
     return NextResponse.json({ error: 'list_id and is_locked are required' }, { status: 400 });

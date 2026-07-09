@@ -23,6 +23,10 @@ export async function DELETE(request: Request) {
 
   const body = await request.json();
 
+  if (!body.household_id) {
+    return NextResponse.json({ error: 'household_id is required' }, { status: 400 });
+  }
+
   // Hard stop — must explicitly pass confirm: true
   if (body.confirm !== true) {
     return NextResponse.json(
@@ -36,6 +40,7 @@ export async function DELETE(request: Request) {
     .from('household_members')
     .select('household_id, role')
     .eq('user_id', session.user.id)
+    .eq('household_id', body.household_id)
     .single();
 
   if (!membership) {

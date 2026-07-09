@@ -7,8 +7,7 @@ import { createClient } from '@/lib/supabase/server';
  * @outputs   JSON: Array<{ id, user_id, role, joined_at }>
  * @depends_on lib/supabase/server.ts
  */
-
-export async function GET() {
+export async function GET(request: Request) {
   const supabase = createClient();
   const { data: { session } } = await supabase.auth.getSession();
 
@@ -16,11 +15,19 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const { searchParams } = new URL(request.url);
+  const household_id = searchParams.get('household_id');
+
+  if (!household_id) {
+    return NextResponse.json({ error: 'Missing household_id' }, { status: 400 });
+  }
+
   // Get the caller's household from their membership row
   const { data: membership } = await supabase
     .from('household_members')
     .select('household_id')
     .eq('user_id', session.user.id)
+    .eq('household_id', household_id)
     .single();
 
   if (!membership) {

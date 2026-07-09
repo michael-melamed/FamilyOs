@@ -88,21 +88,21 @@ export default function HouseholdSettingsPage() {
 
         if (admin) {
           // Fetch members
-          const memRes = await fetch('/api/household/members');
+          const memRes = await fetch(`/api/household/members?household_id=${membership.household_id}`);
           if (memRes.ok) {
              const mData = await memRes.json();
              setMembers(mData);
           }
 
           // Fetch permissions
-          const permRes = await fetch('/api/household/permissions');
+          const permRes = await fetch(`/api/household/permissions?household_id=${membership.household_id}`);
           if (permRes.ok) {
             const pData = await permRes.json();
             setPermissions(pData);
           }
 
           // Fetch/Generate invite
-          const invRes = await fetch('/api/household/invite');
+          const invRes = await fetch(`/api/household/invite?household_id=${membership.household_id}`);
           if (invRes.ok) {
             const invData = await invRes.json();
             setInviteCode(invData.code);
@@ -124,7 +124,7 @@ export default function HouseholdSettingsPage() {
       const res = await fetch('/api/household/dissolve', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ confirm: true })
+        body: JSON.stringify({ confirm: true, household_id: localStorage.getItem('active_household_id') })
       });
       if (res.ok) {
         router.push('/household/setup');
@@ -170,7 +170,7 @@ export default function HouseholdSettingsPage() {
     const res = await fetch('/api/household/lists/lock', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ list_id: id, is_locked: !currentLock })
+      body: JSON.stringify({ list_id: id, is_locked: !currentLock, household_id: localStorage.getItem('active_household_id') })
     });
     if (res.ok) {
       setLists(lists.map(l => l.id === id ? { ...l, is_locked: !currentLock } : l));
@@ -190,7 +190,7 @@ export default function HouseholdSettingsPage() {
     const res = await fetch('/api/household/members/remove', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: userId })
+      body: JSON.stringify({ user_id: userId, household_id: localStorage.getItem('active_household_id') })
     });
     if (res.ok) {
       setMembers(members.filter(m => m.user_id !== userId));
@@ -208,7 +208,7 @@ export default function HouseholdSettingsPage() {
     const res = await fetch('/api/household/permissions', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ [key]: value })
+      body: JSON.stringify({ [key]: value, household_id: localStorage.getItem('active_household_id') })
     });
     if (res.ok) {
       setPermSaved(true);

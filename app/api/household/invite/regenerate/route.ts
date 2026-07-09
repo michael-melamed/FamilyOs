@@ -19,7 +19,7 @@ function generateCode(): string {
   return code;
 }
 
-export async function POST() {
+export async function POST(request: Request) {
   const supabase = createClient();
   const { data: { session } } = await supabase.auth.getSession();
 
@@ -27,10 +27,16 @@ export async function POST() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const body = await request.json().catch(() => ({}));
+  if (!body.household_id) {
+    return NextResponse.json({ error: 'Missing household_id' }, { status: 400 });
+  }
+
   const { data: membership } = await supabase
     .from('household_members')
     .select('household_id, role')
     .eq('user_id', session.user.id)
+    .eq('household_id', body.household_id)
     .single();
 
   if (!membership) {

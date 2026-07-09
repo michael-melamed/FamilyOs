@@ -20,10 +20,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { user_id: targetUserId } = await request.json();
+  const { user_id: targetUserId, household_id } = await request.json();
 
-  if (!targetUserId) {
-    return NextResponse.json({ error: 'user_id is required' }, { status: 400 });
+  if (!targetUserId || !household_id) {
+    return NextResponse.json({ error: 'user_id and household_id are required' }, { status: 400 });
   }
 
   // Verify caller is admin
@@ -31,6 +31,7 @@ export async function POST(request: Request) {
     .from('household_members')
     .select('household_id, role')
     .eq('user_id', session.user.id)
+    .eq('household_id', household_id)
     .single();
 
   if (!callerMembership) {

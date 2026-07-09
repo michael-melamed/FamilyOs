@@ -12,7 +12,7 @@ import { createClient } from '@/lib/supabase/server';
  *   - 404 if no active invite code exists (use /regenerate to create one)
  */
 
-export async function GET() {
+export async function GET(request: Request) {
   const supabase = createClient();
   const { data: { session } } = await supabase.auth.getSession();
 
@@ -20,10 +20,18 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const { searchParams } = new URL(request.url);
+  const household_id = searchParams.get('household_id');
+
+  if (!household_id) {
+    return NextResponse.json({ error: 'Missing household_id' }, { status: 400 });
+  }
+
   const { data: membership } = await supabase
     .from('household_members')
     .select('household_id, role')
     .eq('user_id', session.user.id)
+    .eq('household_id', household_id)
     .single();
 
   if (!membership) {

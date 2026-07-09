@@ -14,7 +14,7 @@ async function getSession() {
   return createClient().auth.getSession();
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const supabase = createClient();
   const { data: { session } } = await supabase.auth.getSession();
 
@@ -22,10 +22,18 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const { searchParams } = new URL(request.url);
+  const household_id = searchParams.get('household_id');
+
+  if (!household_id) {
+    return NextResponse.json({ error: 'Missing household_id' }, { status: 400 });
+  }
+
   const { data: membership } = await supabase
     .from('household_members')
     .select('household_id')
     .eq('user_id', session.user.id)
+    .eq('household_id', household_id)
     .single();
 
   if (!membership) {
@@ -49,10 +57,16 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const body = await request.json().catch(() => ({}));
+  if (!body.household_id) {
+    return NextResponse.json({ error: 'Missing household_id' }, { status: 400 });
+  }
+
   const { data: membership } = await supabase
     .from('household_members')
     .select('household_id, role')
     .eq('user_id', session.user.id)
+    .eq('household_id', body.household_id)
     .single();
 
   if (!membership) {
@@ -63,9 +77,7 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: 'Only admins can update permissions' }, { status: 403 });
   }
 
-  const body = await request.json();
-
-  // Strip household_id from body to prevent tampering — always use session-derived value
+  // Extract household_id to prevent it from being modified in updates
   const { household_id: _ignored, ...updates } = body;
 
   const { data, error } = await supabase
