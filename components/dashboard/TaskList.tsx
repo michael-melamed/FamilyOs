@@ -26,8 +26,7 @@ type TaskListProps = {
 };
 
 export function TaskList({ listName = 'משימות', tasks, familyId, onUpdate, is_locked = false, can_add_tasks = true, can_delete_tasks = false }: TaskListProps) {
-  // Only displaying pending or in-progress tasks natively mapped top-level (no parents for Mission 4 scope unless explicitly requested nested representations)
-  const activeTasks = tasks.filter(t => t.status !== 'done' && !t.parent_id);
+  const activeTasks = tasks.filter((t) => t.status !== 'done' && !t.parent_id);
 
   return (
     <div className="mb-6">

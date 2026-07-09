@@ -66,6 +66,10 @@ export default function DashboardPage() {
         // If saved ID is valid for this user, use it. Otherwise use the first one.
         const isValid = savedId && memberships.some(m => m.household_id === savedId);
         const targetMembership = isValid ? memberships.find(m => m.household_id === savedId) : memberships[0];
+        if (!targetMembership) {
+          router.push('/household/setup');
+          return;
+        }
         const targetId = targetMembership.household_id;
         const targetName = (targetMembership.households as any)?.name;
 
