@@ -66,6 +66,7 @@ Rules:
 14. "תשנה את שם הרשימה X ל-Y" → RENAME_LIST
 15. "תשנה את שם הבית ל-Y" or "שם הקבוצה ל-Y" → RENAME_HOUSEHOLD
 16. "תמחק את המשימה X" or "תסיר את המשימה X" → DELETE_TASK
+17. For shopping list: commands like "תמחק/תנקה את המסומנים בקניות", "מחיקת הפריטים המסומנים מרשימת הקניות", "תנקה את מה שקנינו", "תרוקן את רשימת הקניות" MUST map to CLEAR_LIST with list_id set to "INFER:קניות". Do NOT attempt to delete them one-by-one or write explanatory text saying you cannot access it. The backend will handle the clearing of checked or all items automatically based on the command.
 `;
 
 export async function parsePrompt(
