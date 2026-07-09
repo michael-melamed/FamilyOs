@@ -49,6 +49,7 @@ export async function middleware(request: NextRequest) {
 
   // Routes that don't require authentication
   const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/invite');
+  const isPublicRoute = pathname === '/';
 
   // API and OAuth callback routes — always pass through so Supabase can exchange the code
   const isApiRoute =
@@ -58,39 +59,25 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // Helper to redirect while preserving cookies (essential for Supabase SSR)
-  const redirect = (to: string) => {
-    const url = request.nextUrl.clone();
-    url.pathname = to;
-    const response = NextResponse.redirect(url);
-    supabaseResponse.cookies.getAll().forEach((cookie) => {
-      response.cookies.set(cookie.name, cookie.value, {
-        path: cookie.path,
-        domain: cookie.domain,
-        maxAge: cookie.maxAge,
-        expires: cookie.expires,
-        secure: cookie.secure,
-        httpOnly: cookie.httpOnly,
-        sameSite: cookie.sameSite,
-      });
-    });
-    return response;
-  };
-
   // Logged-out user trying to reach a protected page → send to /login
-  if (!user && !isAuthRoute) {
-    return redirect('/login');
+  if (!user && !isAuthRoute && !isPublicRoute) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/login';
+    return NextResponse.redirect(url);
   }
 
   // Logged-in user on an auth page (login / invite landing) → send to /dashboard
   if (user && isAuthRoute) {
-    return redirect('/dashboard');
+    const url = request.nextUrl.clone();
+    url.pathname = '/dashboard';
+    return NextResponse.redirect(url);
   }
 
   // Logged-in user on root / → send to /dashboard
-  // NOTE: this must come AFTER the isAuthRoute check above to avoid an unreachable branch
   if (user && pathname === '/') {
-    return redirect('/dashboard');
+    const url = request.nextUrl.clone();
+    url.pathname = '/dashboard';
+    return NextResponse.redirect(url);
   }
 
   return supabaseResponse;
