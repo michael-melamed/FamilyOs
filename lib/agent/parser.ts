@@ -41,6 +41,12 @@ Action types:
 { "type": "ADD_SHOPPING",   "item": "...",  "quantity": "..." }
 { "type": "UPDATE_TASK",    "task_id": "INFER:[title]", "changes": { "status": "in_progress" } }
 { "type": "UPDATE_MEMORY",  "key": "...", "value": "...", "category": "general|member|preference|routine" }
+{ "type": "DELETE_TASK",    "task_id": "INFER:[title]" }
+{ "type": "CREATE_LIST",    "name": "..." }
+{ "type": "DELETE_LIST",    "list_id": "INFER:[list name]" }
+{ "type": "CLEAR_LIST",     "list_id": "INFER:[list name]" }
+{ "type": "RENAME_LIST",    "list_id": "INFER:[list name]", "new_name": "..." }
+{ "type": "RENAME_HOUSEHOLD", "new_name": "..." }
 { "type": "NO_ACTION",      "message": "..." }
 
 Rules:
@@ -51,9 +57,15 @@ Rules:
 5. A name (תמר, מיכאל, ישי) in context of a task → set as assignee
 6. New personal info ("אני אוהב...", "אנחנו רגיל...") → UPDATE_MEMORY
 7. summary must ALWAYS be in Hebrew, 1-2 sentences max
-8. For COMPLETE_TASK and UPDATE_TASK: if no task_id is known, use "INFER:[task title from message]"
+8. For COMPLETE_TASK, UPDATE_TASK, and DELETE_TASK: if no task_id is known, use "INFER:[task title from message]"
 9. One message can produce multiple actions — return all of them in the array
 10. For ADD_TASK: if the user mentions a specific list name (e.g. "לרשימת X", "ברשימה X"), set list_id to that list's UUID from the available lists below. If no list is specified, set list_id to null.
+11. "תיצור רשימה בשם X" or "רשימה חדשה בשם X" → CREATE_LIST
+12. "תמחק את רשימת X" or "להסיר את רשימת X" → DELETE_LIST
+13. "תנקה את רשימת X" or "תרוקן את רשימת X" → CLEAR_LIST
+14. "תשנה את שם הרשימה X ל-Y" → RENAME_LIST
+15. "תשנה את שם הבית ל-Y" or "שם הקבוצה ל-Y" → RENAME_HOUSEHOLD
+16. "תמחק את המשימה X" or "תסיר את המשימה X" → DELETE_TASK
 `;
 
 export async function parsePrompt(
@@ -64,7 +76,7 @@ export async function parsePrompt(
 ): Promise<AgentOutput> {
   // Build the lists section for Claude
   const listsContext = availableLists.length > 0
-    ? `Available lists in this household (use these IDs for ADD_TASK list_id):\n${availableLists.map(l => `- ID: ${l.id} | Name: ${l.name}`).join('\n')}`
+    ? `Available lists in this household:\n${availableLists.map(l => `- ID: ${l.id} | Name: ${l.name}`).join('\n')}`
     : 'No custom lists found. Use list_id: null for all ADD_TASK actions.';
 
   const SYSTEM_PROMPT = `${BASE_SYSTEM_PROMPT}\n${listsContext}`;
@@ -134,10 +146,17 @@ export async function parsePrompt(
     const parsedOutput = JSON.parse(rawJson.trim()) as AgentOutput;
 
     parsedOutput.actions = parsedOutput.actions.map(action => {
-      if ((action.type === 'COMPLETE_TASK' || action.type === 'UPDATE_TASK') && action.task_id.startsWith('INFER:')) {
+      // Inferred task ids
+      if ((action.type === 'COMPLETE_TASK' || action.type === 'UPDATE_TASK' || action.type === 'DELETE_TASK') && 'task_id' in action && action.task_id.startsWith('INFER:')) {
         const inferred = action.task_id.replace('INFER:', '').trim().toLowerCase();
         const match = currentTasks.find(t => t.title.toLowerCase().includes(inferred));
         if (match) action.task_id = match.id;
+      }
+      // Inferred list ids
+      if ((action.type === 'DELETE_LIST' || action.type === 'CLEAR_LIST' || action.type === 'RENAME_LIST') && 'list_id' in action && action.list_id.startsWith('INFER:')) {
+        const inferred = action.list_id.replace('INFER:', '').trim().toLowerCase();
+        const match = availableLists.find(l => l.name.toLowerCase().includes(inferred));
+        if (match) action.list_id = match.id;
       }
       return action;
     });

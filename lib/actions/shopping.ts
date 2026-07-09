@@ -64,3 +64,14 @@ export async function clearCheckedItems(familyId: string): Promise<void> {
 
   if (error) throw new Error(error.message);
 }
+
+export async function clearAllShoppingItems(familyId: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from('shopping_items')
+    .delete()
+    .eq('family_id', familyId);
+
+  if (error) throw new Error(error.message);
+}
+

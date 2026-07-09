@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { parsePrompt } from '@/lib/agent/parser';
-import { createTask, updateTask, completeTask } from '@/lib/actions/tasks';
-import { addShoppingItem } from '@/lib/actions/shopping';
+import { createTask, updateTask, completeTask, deleteTask } from '@/lib/actions/tasks';
+import { addShoppingItem, clearAllShoppingItems } from '@/lib/actions/shopping';
+import { createList, renameList, deleteList, clearList } from '@/lib/actions/lists';
+import { updateHouseholdName } from '@/lib/actions/households';
 import { upsertMemory } from '@/lib/actions/memory';
 import type { Task, List } from '@/types';
 
@@ -44,7 +46,7 @@ export async function POST(req: Request) {
     // Use .maybeSingle() (or filter on user_id) to handle users with multiple households correctly.
     const { data: memberships } = await supabase
       .from('household_members')
-      .select('household_id')
+      .select('household_id, role')
       .eq('user_id', session.user.id)
       .eq('household_id', familyId);
 
@@ -56,6 +58,14 @@ export async function POST(req: Request) {
     }
 
     const householdId = familyId;
+    const callerRole = memberships[0].role;
+
+    // Fetch household permissions to respect them
+    const { data: permissions } = await supabase
+      .from('household_permissions')
+      .select('*')
+      .eq('household_id', householdId)
+      .single();
 
     // Load active tasks for agent context (household-scoped)
     const { data: activeTasks } = await supabase
@@ -105,6 +115,59 @@ export async function POST(req: Request) {
             break;
           case 'UPDATE_MEMORY':
             await upsertMemory(householdId, action.key, action.value, action.category);
+            actionsExecutedCount++;
+            break;
+          case 'DELETE_TASK':
+            if (!action.task_id.startsWith('INFER:')) {
+              if (callerRole !== 'admin' && permissions?.can_delete_tasks === false) {
+                throw new Error('אין לך הרשאה למחוק משימות בקבוצה זו');
+              }
+              await deleteTask(action.task_id);
+              actionsExecutedCount++;
+            }
+            break;
+          case 'CREATE_LIST':
+            await createList(householdId, action.name);
+            actionsExecutedCount++;
+            break;
+          case 'DELETE_LIST':
+            if (!action.list_id.startsWith('INFER:')) {
+              if (callerRole !== 'admin') {
+                throw new Error('רק מנהלים יכולים למחוק רשימות');
+              }
+              const listToDelete = availableLists?.find(l => l.id === action.list_id);
+              if (listToDelete?.name === 'משימות' || listToDelete?.name === 'קניות') {
+                throw new Error('לא ניתן למחוק את רשימות ברירת המחדל');
+              }
+              await deleteList(action.list_id);
+              actionsExecutedCount++;
+            }
+            break;
+          case 'CLEAR_LIST':
+            if (!action.list_id.startsWith('INFER:')) {
+              if (callerRole !== 'admin' && permissions?.can_clear_lists === false) {
+                throw new Error('אין לך הרשאה לנקות רשימות בקבוצה זו');
+              }
+              const listToClear = availableLists?.find(l => l.id === action.list_id);
+              if (listToClear?.name === 'קניות') {
+                await clearAllShoppingItems(householdId);
+              } else {
+                await clearList(householdId, action.list_id);
+              }
+              actionsExecutedCount++;
+            }
+            break;
+          case 'RENAME_LIST':
+            if (!action.list_id.startsWith('INFER:')) {
+              await renameList(action.list_id, action.new_name);
+              actionsExecutedCount++;
+            }
+            break;
+          case 'RENAME_HOUSEHOLD':
+            if (callerRole !== 'admin') {
+              throw new Error('רק מנהלים יכולים לשנות את שם הבית');
+            }
+            await updateHouseholdName(householdId, action.new_name);
             actionsExecutedCount++;
             break;
           case 'NO_ACTION':

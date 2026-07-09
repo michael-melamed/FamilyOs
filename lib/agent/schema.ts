@@ -20,6 +20,12 @@ export type AgentAction =
   | { type: 'ADD_SHOPPING';   item: string; quantity?: string }
   | { type: 'UPDATE_TASK';    task_id: string; changes: Partial<Task> }
   | { type: 'UPDATE_MEMORY';  key: string; value: string; category: MemoryCategory }
+  | { type: 'DELETE_TASK';    task_id: string }
+  | { type: 'CREATE_LIST';    name: string }
+  | { type: 'DELETE_LIST';    list_id: string }
+  | { type: 'CLEAR_LIST';     list_id: string }
+  | { type: 'RENAME_LIST';    list_id: string; new_name: string }
+  | { type: 'RENAME_HOUSEHOLD'; new_name: string }
   | { type: 'NO_ACTION';      message: string }
 
 export type AgentOutput = {
