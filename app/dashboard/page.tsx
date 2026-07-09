@@ -103,7 +103,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F4F7FB] flex flex-col relative pb-28 text-right mx-auto max-w-3xl">
+    <div className="min-h-screen bg-calm-bg flex flex-col relative pb-28 text-right mx-auto max-w-3xl">
       <Header
         onMenuClick={() => setIsSidebarOpen(true)}
         hasRecentUpdate={hasRecentUpdate}

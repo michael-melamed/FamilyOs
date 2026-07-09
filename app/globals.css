@@ -1,1 +1,13 @@
 @import "tailwindcss";
+
+@theme {
+  --color-brand-teal: #00C9A7;
+  --color-brand-purple: #4F46E5;
+  --color-calm-bg: #FAFAFA;
+  --color-calm-text: #1E1B4B;
+  --color-muted-warm: #6B7280;
+}
+
+@utility bg-brand-gradient {
+  background-image: linear-gradient(to left, #00C9A7, #4F46E5);
+}
