@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { parsePrompt } from '@/lib/agent/parser';
 import { createTask, updateTask, completeTask, deleteTask } from '@/lib/actions/tasks';
-import { addShoppingItem, clearAllShoppingItems } from '@/lib/actions/shopping';
+import { addShoppingItem, clearAllShoppingItems, clearCheckedItems } from '@/lib/actions/shopping';
 import { createList, renameList, deleteList, clearList } from '@/lib/actions/lists';
 import { updateHouseholdName } from '@/lib/actions/households';
 import { upsertMemory } from '@/lib/actions/memory';
@@ -130,33 +130,54 @@ export async function POST(req: Request) {
             await createList(householdId, action.name);
             actionsExecutedCount++;
             break;
-          case 'DELETE_LIST':
-            if (!action.list_id.startsWith('INFER:')) {
+          case 'DELETE_LIST': {
+            const listId = action.list_id;
+            const isDefault = listId === 'INFER:קניות' || listId === 'INFER:משימות' ||
+              (listId.startsWith('INFER:') && ['קניות', 'משימות'].includes(listId.replace('INFER:', '').trim())) ||
+              (availableLists?.find(l => l.id === listId)?.name === 'קניות' || availableLists?.find(l => l.id === listId)?.name === 'משימות');
+
+            if (isDefault) {
+              throw new Error('לא ניתן למחוק את רשימות ברירת המחדל');
+            }
+
+            if (!listId.startsWith('INFER:')) {
               if (callerRole !== 'admin') {
                 throw new Error('רק מנהלים יכולים למחוק רשימות');
               }
-              const listToDelete = availableLists?.find(l => l.id === action.list_id);
-              if (listToDelete?.name === 'משימות' || listToDelete?.name === 'קניות') {
-                throw new Error('לא ניתן למחוק את רשימות ברירת המחדל');
-              }
-              await deleteList(action.list_id);
+              await deleteList(listId);
               actionsExecutedCount++;
             }
             break;
-          case 'CLEAR_LIST':
-            if (!action.list_id.startsWith('INFER:')) {
+          }
+          case 'CLEAR_LIST': {
+            const listId = action.list_id;
+            const isShopping = listId === 'INFER:קניות' || 
+              (listId.startsWith('INFER:') && listId.replace('INFER:', '').trim() === 'קניות') ||
+              (availableLists?.find(l => l.id === listId)?.name === 'קניות');
+
+            if (isShopping) {
+              if (callerRole !== 'admin' && permissions?.can_clear_lists === false) {
+                throw new Error('אין לך הרשאה לנקות את רשימת הקניות');
+              }
+              const cleanPrompt = prompt.toLowerCase();
+              // Check if prompt specifically mentions clearing "all" or "everything"
+              const shouldClearAll = cleanPrompt.includes('כל') || cleanPrompt.includes('הכל') || cleanPrompt.includes('לגמרי');
+              
+              if (shouldClearAll) {
+                await clearAllShoppingItems(householdId);
+              } else {
+                await clearCheckedItems(householdId);
+              }
+              actionsExecutedCount++;
+            } else if (!listId.startsWith('INFER:')) {
               if (callerRole !== 'admin' && permissions?.can_clear_lists === false) {
                 throw new Error('אין לך הרשאה לנקות רשימות בקבוצה זו');
               }
-              const listToClear = availableLists?.find(l => l.id === action.list_id);
-              if (listToClear?.name === 'קניות') {
-                await clearAllShoppingItems(householdId);
-              } else {
-                await clearList(householdId, action.list_id);
-              }
+              await clearList(householdId, listId);
               actionsExecutedCount++;
             }
             break;
+          }
           case 'RENAME_LIST':
             if (!action.list_id.startsWith('INFER:')) {
               await renameList(action.list_id, action.new_name);
