@@ -89,6 +89,7 @@ export type Task = {
   status: TaskStatus;
   assignee?: string;
   parent_id?: string;
+  list_id?: string;
   position: number;
   created_by?: string;
   created_at: string;

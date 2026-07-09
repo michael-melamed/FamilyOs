@@ -49,7 +49,7 @@ export function Board({ tasks, shoppingItems, lists = [], permissions, familyId,
         <TaskList 
           key={list.id}
           listName={list.name}
-          tasks={list.name === 'משימות' ? tasks : []} 
+          tasks={tasks.filter(t => t.list_id === list.id || (!t.list_id && list.name === 'משימות'))} 
           familyId={familyId} 
           onUpdate={onUpdate} 
           is_locked={list.is_locked}
