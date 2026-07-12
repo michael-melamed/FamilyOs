@@ -14,10 +14,11 @@
  *   - Realtime not working → check supabase_realtime publication includes tasks and shopping_items tables
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRealtimeTable } from '@/lib/supabase/realtime';
 import type { Task, ShoppingItem } from '@/types';
+import { toast } from 'sonner';
 
 export function useBoard(householdId: string | undefined) {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -29,14 +30,26 @@ export function useBoard(householdId: string | undefined) {
   const [hasRecentUpdate, setHasRecentUpdate] = useState(false);
   const [lastUpdatedBy, setLastUpdatedBy] = useState<string | undefined>();
 
+  const lastLocalUpdateRef = useRef<number>(0);
+
   const supabase = useMemo(() => createClient(), []);
 
   const refetch = useCallback(async (isRealtimeUpdate = false) => {
     if (!householdId) return;
 
     if (isRealtimeUpdate) {
+      const now = Date.now();
+      // Only show toast if the last local action was more than 2 seconds ago
+      if (now - lastLocalUpdateRef.current > 2000) {
+        toast.info('עדכון חדש התקבל', {
+          description: 'מישהו אחר מעדכן את הרשימה כעת',
+          duration: 4000,
+        });
+      }
       setHasRecentUpdate(true);
       setTimeout(() => setHasRecentUpdate(false), 60000);
+    } else {
+      lastLocalUpdateRef.current = Date.now();
     }
 
     try {

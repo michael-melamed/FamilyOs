@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { createClient } from './client';
 
 /**
@@ -26,6 +26,12 @@ export function useRealtimeTable(
   familyId: string | null,
   onUpdate: () => void
 ) {
+  const onUpdateRef = useRef(onUpdate);
+
+  useEffect(() => {
+    onUpdateRef.current = onUpdate;
+  }, [onUpdate]);
+
   useEffect(() => {
     if (!familyId) return;
 
@@ -43,7 +49,7 @@ export function useRealtimeTable(
           filter: table === 'tasks' || table === 'lists' ? `household_id=eq.${familyId}` : `family_id=eq.${familyId}`,
         },
         () => {
-          onUpdate();
+          onUpdateRef.current();
         }
       )
       .subscribe();
@@ -51,5 +57,5 @@ export function useRealtimeTable(
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [table, familyId, onUpdate]);
+  }, [table, familyId]);
 }

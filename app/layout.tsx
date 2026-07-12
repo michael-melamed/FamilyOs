@@ -20,6 +20,7 @@
 import './globals.css'
 import type { Metadata, Viewport } from 'next'
 import Script from 'next/script'
+import { Toaster } from 'sonner'
 
 export const metadata: Metadata = {
   title: 'FamilyOS',
@@ -50,6 +51,7 @@ export default function RootLayout({
     <html lang="he" dir="rtl">
       <body className="bg-calm-bg text-calm-text">
         {children}
+        <Toaster position="bottom-center" richColors />
         
         {/* PWA Service Worker Registration */}
         <Script id="register-sw" strategy="afterInteractive">
