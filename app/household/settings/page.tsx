@@ -250,41 +250,69 @@ export default function HouseholdSettingsPage() {
     setMemories(memories.filter(m => m.key !== key));
   };
 
-  if (loading) return <div className="min-h-screen bg-[#F4F7FB] flex items-center justify-center">טוען...</div>;
+  const [activeSection, setActiveSection] = useState<string | null>(null);
 
-  const allTabs = [
+  if (loading) return <div className="min-h-screen bg-calm-bg flex items-center justify-center">טוען...</div>;
+
+  const tabs = isAdmin ? [
     { id: 'general', label: 'כללי' },
-    { id: 'content', label: 'ניהול רשימות' },
-    { id: 'memory', label: 'זיכרון הסוכן' },
-    { id: 'members', label: 'משתתפים' },
-    { id: 'permissions', label: 'הרשאות' },
-    // { id: 'premium', label: 'מנוי פרימיום' }, // Temporarily disabled placeholder
+    { id: 'advanced', label: 'ניהול והגדרות' },
+  ] : [
+    { id: 'general', label: 'כללי' },
+    { id: 'advanced', label: 'זיכרון הסוכן' },
   ];
 
-  const tabs = isAdmin ? allTabs : [
-    { id: 'general', label: 'כללי' },
-    { id: 'memory', label: 'זיכרון הסוכן (צפייה)' },
-  ];
+  const renderAccordion = (sectionId: string, sectionTitle: string, sectionIcon: string, content: React.ReactNode) => {
+    const isOpen = activeSection === sectionId;
+    return (
+      <div className="w-full bg-white rounded-2xl border border-neutral-100 shadow-sm overflow-hidden transition-all duration-300">
+        <button 
+          onClick={() => setActiveSection(isOpen ? null : sectionId)}
+          className="w-full flex items-center justify-between p-4 bg-white active:bg-neutral-50/80 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-xl">{sectionIcon}</span>
+            <span className="text-base font-semibold text-calm-text">{sectionTitle}</span>
+          </div>
+          <div className="w-6 h-6 rounded-full bg-neutral-50 flex items-center justify-center text-muted-warm font-bold text-lg transition-transform duration-200">
+            {isOpen ? '−' : '+'}
+          </div>
+        </button>
+        <div 
+          className={`grid transition-all duration-300 ease-in-out ${
+            isOpen ? 'grid-rows-[1fr] opacity-100 border-t border-neutral-50' : 'grid-rows-[0fr] opacity-0'
+          }`}
+        >
+          <div className="overflow-hidden">
+            <div className="p-4 bg-calm-bg/30">
+              {content}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <div className="min-h-screen bg-[#F4F7FB] p-6 text-right" dir="rtl">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-[#1B2A4A]">הגדרות קבוצה</h1>
-          <button onClick={() => router.push('/dashboard')} className="text-[#4A5568] hover:text-[#1B2A4A] transition-colors">
-            חזרה לדשבורד
+    <div className="min-h-screen bg-calm-bg p-4 md:p-6 text-right" dir="rtl">
+      <div className="max-w-3xl mx-auto">
+        <div className="flex justify-between items-center mb-6 px-2">
+          <h1 className="text-2xl md:text-3xl font-bold text-calm-text">הגדרות קבוצה</h1>
+          <button onClick={() => router.push('/dashboard')} className="text-muted-warm hover:text-calm-text transition-colors text-sm font-medium bg-white px-3 py-1.5 rounded-full shadow-sm border border-neutral-100">
+            ← חזרה
           </button>
         </div>
         
-        <div className="flex gap-4 border-b border-[#C8D4E8] mb-6 overflow-x-auto pb-2">
+        {/* Mobile-First Tab Navigation */}
+        <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap scrollbar-none snap-x px-2 py-2 mb-6">
           {tabs.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 font-medium whitespace-nowrap transition-colors ${
+              className={`snap-center transition-colors ${
                 activeTab === tab.id 
-                  ? 'text-[#1A7A4A] border-b-2 border-[#1A7A4A]' 
-                  : 'text-[#4A5568] hover:text-[#1B2A4A]'
+                  ? 'bg-brand-purple/10 text-brand-purple border border-brand-purple/20 px-4 py-1.5 rounded-full text-sm font-medium' 
+                  : 'bg-white text-muted-warm hover:bg-neutral-50 px-4 py-1.5 rounded-full text-sm font-medium border border-neutral-100 shadow-sm'
               }`}
             >
               {tab.label}
@@ -292,266 +320,260 @@ export default function HouseholdSettingsPage() {
           ))}
         </div>
 
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-[#C8D4E8] min-h-[400px]">
+        <div className="space-y-6">
           
           {/* Tab: General */}
           {activeTab === 'general' && (
-            <div className="space-y-8">
-              <section className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
-                <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">פרופיל הקבוצה</h3>
+            <div className="space-y-4">
+              <div className="bg-white p-5 rounded-3xl shadow-sm border border-neutral-100">
+                <h3 className="text-xs font-bold text-muted-warm uppercase tracking-wider mb-4">פרופיל הקבוצה</h3>
                 <div className="flex items-center justify-between">
                   {isEditingName ? (
-                    <div className="flex gap-2 w-full max-w-md">
+                    <div className="flex gap-2 w-full flex-wrap">
                       <input 
                         type="text"
                         value={householdName}
                         onChange={e => setHouseholdName(e.target.value)}
-                        className="flex-1 px-4 py-2 border rounded-xl outline-none focus:border-[#1A7A4A]"
+                        className="flex-1 min-w-[200px] px-4 py-2 border border-neutral-200 rounded-xl outline-none focus:border-brand-teal text-sm"
                         autoFocus
                       />
                       <button 
                         onClick={handleUpdateName}
                         disabled={savingName}
-                        className="bg-[#1A7A4A] text-white px-6 py-2 rounded-xl font-bold disabled:opacity-50"
+                        className="bg-brand-teal text-white px-5 py-2 rounded-xl font-bold disabled:opacity-50 text-sm"
                       >
                         שמור
                       </button>
-                      <button onClick={() => setIsEditingName(false)} className="px-4 py-2 text-gray-500">ביטול</button>
+                      <button onClick={() => setIsEditingName(false)} className="px-4 py-2 text-muted-warm text-sm">ביטול</button>
                     </div>
                   ) : (
                     <>
                       <div>
-                        <p className="text-2xl font-bold text-[#1B2A4A]">{householdName}</p>
-                        <p className="text-sm text-gray-500">זהו השם שכולם רואים בדשבורד</p>
+                        <p className="text-xl font-bold text-calm-text">{householdName}</p>
+                        <p className="text-sm text-muted-warm">זהו השם שכולם רואים בדשבורד</p>
                       </div>
                       {isAdmin && (
-                        <button onClick={() => setIsEditingName(true)} className="p-2 hover:bg-gray-200 rounded-lg transition-colors">✏️ ערוך שם</button>
+                        <button onClick={() => setIsEditingName(true)} className="p-2 hover:bg-neutral-100 rounded-xl transition-colors text-sm">✏️ ערוך</button>
                       )}
                     </>
                   )}
                 </div>
-              </section>
+              </div>
 
               {isAdmin && inviteCode && (
-                <section className="bg-[#e6f4ea] p-6 rounded-2xl border border-[#c8e6d1]">
-                   <h3 className="text-sm font-bold text-[#1A7A4A] uppercase tracking-wider mb-2">הזמנת חברים</h3>
-                   <p className="text-sm text-[#2d5a3d] mb-4">שלח את הקוד או הקישור למי שאתה רוצה לצרף לבית:</p>
+                <div className="bg-brand-teal/5 p-5 rounded-3xl border border-brand-teal/10">
+                   <h3 className="text-xs font-bold text-brand-teal uppercase tracking-wider mb-2">הזמנת חברים</h3>
+                   <p className="text-sm text-brand-teal/80 mb-4">שלח את הקוד או הקישור למי שאתה רוצה לצרף לבית:</p>
                    <div className="flex flex-col sm:flex-row gap-3">
-                      <div className="flex-1 bg-white p-3 rounded-xl border border-[#1A7A4A]/20 font-mono text-center flex items-center justify-between">
-                         <span className="text-[#1A7A4A] font-bold text-xl">{inviteCode}</span>
+                      <div className="flex-1 bg-white p-3 rounded-2xl border border-brand-teal/20 font-mono text-center flex items-center justify-between">
+                         <span className="text-brand-teal font-bold text-xl">{inviteCode}</span>
                          <button 
                            onClick={() => { navigator.clipboard.writeText(inviteCode); alert('הקוד הועתק'); }}
-                           className="text-xs bg-[#1A7A4A] text-white px-3 py-1 rounded-lg"
+                           className="text-xs bg-brand-teal/10 text-brand-teal hover:bg-brand-teal/20 px-3 py-1.5 rounded-lg font-medium transition-colors"
                          >העתק קוד</button>
                       </div>
                       <button 
                          onClick={() => { navigator.clipboard.writeText(inviteLink || ''); alert('הקישור הועתק'); }}
-                         className="px-6 py-3 bg-[#1B2A4A] text-white rounded-xl font-bold shadow-md"
+                         className="px-6 py-3 bg-brand-teal text-white rounded-2xl font-bold shadow-md hover:bg-brand-teal/90 transition-colors text-sm"
                       >🔗 העתק קישור הצטרפות</button>
                    </div>
-                </section>
+                </div>
               )}
-            </div>
-          )}
 
-          {/* Tab: Memory */}
-          {activeTab === 'memory' && (
-            <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <h2 className="text-xl font-bold text-[#1B2A4A]">זיכרון הסוכן</h2>
-                <span className="text-xs text-gray-500">מידע שהסוכן זוכר ומשתמש בו</span>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {memories.map(m => (
-                  <div key={m.key} className="p-4 bg-gray-50 rounded-xl border border-gray-200 flex justify-between items-start group">
-                    <div className="flex-1">
-                      <p className="text-[10px] font-bold text-[#1A7A4A] uppercase mb-1">{m.key}</p>
-                      <p className="text-sm text-[#1B2A4A]">{m.value}</p>
-                    </div>
-                    {isAdmin && (
-                      <button onClick={() => handleDeleteMemory(m.key)} className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all">🗑️</button>
-                    )}
-                  </div>
-                ))}
-              </div>
-
+              {/* Danger Zone - Only in General tab */}
               {isAdmin && (
-                <div className="mt-8 p-6 bg-[#F4F7FB] rounded-2xl border border-dashed border-[#C8D4E8]">
-                  <h4 className="text-sm font-bold mb-4">הוסף זיכרון חדש</h4>
-                  <div className="flex flex-col sm:flex-row gap-3">
+                <div className="mt-8 bg-red-50/40 border border-red-100 p-5 rounded-3xl">
+                  <h2 className="text-base font-bold text-red-700 mb-1">אזור מסוכן</h2>
+                  <p className="text-sm text-red-600/80 mb-4">
+                    מחיקת הקבוצה תמחק את כל המשימות, הרשימות וחברי הקבוצה. פעולה זו בלתי הפיכה.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-3 items-center">
                     <input 
-                      placeholder="מפתח (למשל: יום_ניקיון)"
-                      value={newMemKey}
-                      onChange={e => setNewMemKey(e.target.value)}
-                      className="flex-1 px-4 py-2 border rounded-xl outline-none"
-                    />
-                    <input 
-                      placeholder="ערך (למשל: כל יום שלישי)"
-                      value={newMemVal}
-                      onChange={e => setNewMemVal(e.target.value)}
-                      className="flex-[2] px-4 py-2 border rounded-xl outline-none"
+                      type="text" 
+                      placeholder="הקלד 'DELETE' לאישור"
+                      value={dissolveConfirm}
+                      onChange={(e) => setDissolveConfirm(e.target.value)}
+                      className="px-4 py-2 border border-red-200 rounded-xl focus:border-red-400 outline-none w-full sm:w-auto font-mono text-center tracking-widest text-sm bg-white"
                     />
                     <button 
-                      onClick={handleAddMemory}
-                      disabled={savingMem || !newMemKey || !newMemVal}
-                      className="bg-[#1B2A4A] text-white px-6 py-2 rounded-xl font-bold disabled:opacity-50"
-                    >הוסף</button>
+                      onClick={handleDissolve}
+                      disabled={dissolveConfirm !== 'DELETE'}
+                      className="px-6 py-2 bg-red-500 text-white rounded-xl font-bold disabled:opacity-50 hover:bg-red-600 w-full sm:w-auto transition-colors text-sm"
+                    >
+                      פזר קבוצה
+                    </button>
                   </div>
                 </div>
               )}
             </div>
           )}
 
-          {/* Admin: Content (Lists) */}
-          {activeTab === 'content' && (
-            <div className="space-y-6">
-              <h2 className="text-xl font-bold text-[#1B2A4A]">ניהול רשימות</h2>
-              <div className="space-y-3">
-                {lists.map(list => (
-                  <div key={list.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
-                    <div className="flex items-center gap-3">
-                      <button onClick={() => handleToggleLock(list.id, list.is_locked)} className="text-xl" title={list.is_locked ? 'שחרר נעילה' : 'נעל רשימה (לאדמינים בלבד)'}>
-                        {list.is_locked ? '🔒' : '🔓'}
-                      </button>
-                      {editingListId === list.id ? (
-                        <input
-                          type="text"
-                          value={editListName}
-                          onChange={(e) => setEditListName(e.target.value)}
-                          onBlur={() => handleRenameList(list.id)}
-                          onKeyDown={(e) => e.key === 'Enter' && handleRenameList(list.id)}
-                          autoFocus
-                          className="border border-gray-300 rounded px-2 py-1 outline-none focus:border-[#1A7A4A]"
-                        />
-                      ) : (
-                        <span 
-                          className="font-medium text-[#1B2A4A] cursor-pointer hover:underline"
-                          onClick={() => { setEditingListId(list.id); setEditListName(list.name); }}
+          {/* Tab: Advanced (Accordion List) */}
+          {activeTab === 'advanced' && (
+            <div className="space-y-3">
+              
+              {/* Accordion: Lists (Admin Only) */}
+              {isAdmin && renderAccordion('lists', 'ניהול רשימות', '📋', (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    {lists.map(list => (
+                      <div key={list.id} className="flex items-center justify-between p-3 bg-white rounded-xl border border-neutral-100 shadow-sm">
+                        <div className="flex items-center gap-3">
+                          <button onClick={() => handleToggleLock(list.id, list.is_locked)} className="text-lg opacity-70 hover:opacity-100 transition-opacity" title={list.is_locked ? 'שחרר נעילה' : 'נעל רשימה (לאדמינים בלבד)'}>
+                            {list.is_locked ? '🔒' : '🔓'}
+                          </button>
+                          {editingListId === list.id ? (
+                            <input
+                              type="text"
+                              value={editListName}
+                              onChange={(e) => setEditListName(e.target.value)}
+                              onBlur={() => handleRenameList(list.id)}
+                              onKeyDown={(e) => e.key === 'Enter' && handleRenameList(list.id)}
+                              autoFocus
+                              className="border border-brand-teal/30 rounded-lg px-2 py-1 outline-none focus:border-brand-teal text-sm"
+                            />
+                          ) : (
+                            <span 
+                              className="font-medium text-calm-text text-sm cursor-text hover:underline"
+                              onClick={() => { setEditingListId(list.id); setEditListName(list.name); }}
+                            >
+                              {list.name}
+                            </span>
+                          )}
+                        </div>
+                        {/* ONLY show delete button if NOT locked */}
+                        {!list.is_locked && (
+                          <button onClick={() => handleDeleteList(list.id, list.name)} className="text-red-400 hover:text-red-600 text-xs font-bold transition-colors">
+                            מחק רשימה
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-2 mt-4">
+                    <input
+                      type="text"
+                      value={newListName}
+                      onChange={(e) => setNewListName(e.target.value)}
+                      placeholder="שם הרשימה החדשה"
+                      className="flex-1 px-4 py-2 border border-neutral-200 rounded-xl focus:border-brand-teal outline-none text-sm bg-white"
+                      onKeyDown={(e) => e.key === 'Enter' && handleAddList()}
+                    />
+                    <button onClick={handleAddList} disabled={!newListName.trim()} className="px-5 py-2 bg-calm-text text-white rounded-xl text-sm font-medium disabled:opacity-50 shrink-0">
+                      + הוסף
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              {/* Accordion: Memory */}
+              {renderAccordion('memory', 'זיכרון הסוכן', '🧠', (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 gap-3">
+                    {memories.map(m => (
+                      <div key={m.key} className="p-4 bg-white rounded-xl border border-neutral-100 shadow-sm flex justify-between items-start group">
+                        <div className="flex-1">
+                          <p className="text-xs font-bold text-brand-purple mb-1">{m.key}</p>
+                          <p className="text-sm text-calm-text">{m.value}</p>
+                        </div>
+                        {isAdmin && (
+                          <button onClick={() => handleDeleteMemory(m.key)} className="text-neutral-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all text-lg">🗑️</button>
+                        )}
+                      </div>
+                    ))}
+                    {memories.length === 0 && (
+                      <p className="text-sm text-muted-warm text-center py-4">הסוכן עדיין לא למד כלום על הקבוצה.</p>
+                    )}
+                  </div>
+
+                  {isAdmin && (
+                    <div className="mt-4 p-5 bg-brand-purple/5 rounded-2xl border border-brand-purple/10">
+                      <h4 className="text-sm font-bold text-brand-purple mb-3">למד את הסוכן משהו חדש</h4>
+                      <div className="flex flex-col gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-calm-text/70 mb-1">מה הכלל או ההרגל?</label>
+                          <input 
+                            placeholder="למשל: יום ניקיון (בלי קו תחתון)"
+                            value={newMemKey}
+                            onChange={e => setNewMemKey(e.target.value)}
+                            className="w-full px-4 py-2 border border-neutral-200 rounded-xl outline-none focus:border-brand-purple text-sm bg-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-calm-text/70 mb-1">מה הפירוט או התדירות?</label>
+                          <input 
+                            placeholder="למשל: קורה כל יום שלישי קבוע"
+                            value={newMemVal}
+                            onChange={e => setNewMemVal(e.target.value)}
+                            className="w-full px-4 py-2 border border-neutral-200 rounded-xl outline-none focus:border-brand-purple text-sm bg-white"
+                          />
+                        </div>
+                        <button 
+                          onClick={handleAddMemory}
+                          disabled={savingMem || !newMemKey || !newMemVal}
+                          className="mt-2 bg-brand-purple text-white px-6 py-2.5 rounded-full text-sm font-bold disabled:opacity-50 transition-opacity"
                         >
-                          {list.name}
+                          הוסף מידע לסוכן
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {/* Accordion: Members (Admin Only) */}
+              {isAdmin && renderAccordion('members', 'משתתפים', '👥', (
+                <div className="space-y-2">
+                  {members.map(member => (
+                    <div key={member.id} className="flex items-center justify-between p-3 bg-white rounded-xl border border-neutral-100 shadow-sm">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-brand-teal/10 text-brand-teal rounded-full flex items-center justify-center font-bold text-sm">
+                          מש
+                        </div>
+                        <div>
+                          <div className="font-medium text-calm-text text-sm">משתמש {member.user_id.substring(0,6)}</div>
+                          <div className="text-xs text-muted-warm">הצטרף {new Date(member.joined_at).toLocaleDateString('he-IL')}</div>
+                        </div>
+                        <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${member.role === 'admin' ? 'bg-brand-purple/10 text-brand-purple' : 'bg-neutral-100 text-muted-warm'}`}>
+                          {member.role === 'admin' ? 'אדמין' : 'חבר'}
                         </span>
-                      )}
-                    </div>
-                    <button onClick={() => handleDeleteList(list.id, list.name)} className="text-red-500 hover:text-red-700 text-sm font-medium">
-                      מחק רשימה
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <div className="flex gap-3 mt-4">
-                <input
-                  type="text"
-                  value={newListName}
-                  onChange={(e) => setNewListName(e.target.value)}
-                  placeholder="שם הרשימה החדשה"
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-xl focus:border-[#1A7A4A] outline-none"
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddList()}
-                />
-                <button onClick={handleAddList} disabled={!newListName.trim()} className="px-6 py-2 bg-[#1B2A4A] text-white rounded-xl font-medium disabled:opacity-50">
-                  + רשימה חדשה
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Admin: Members */}
-          {activeTab === 'members' && (
-            <div className="space-y-6">
-              <h2 className="text-xl font-bold text-[#1B2A4A]">משתתפים</h2>
-              <div className="space-y-3">
-                {members.map(member => (
-                  <div key={member.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-[#1A7A4A] rounded-full flex items-center justify-center text-white font-bold">
-                        מש
                       </div>
-                      <div>
-                        <div className="font-medium text-[#1B2A4A]">משתמש {member.user_id.substring(0,6)}</div>
-                        <div className="text-xs text-gray-500">הצטרף {new Date(member.joined_at).toLocaleDateString('he-IL')}</div>
-                      </div>
-                      <span className={`text-xs px-2 py-1 rounded-full ${member.role === 'admin' ? 'bg-blue-100 text-blue-800' : 'bg-gray-200 text-gray-800'}`}>
-                        {member.role === 'admin' ? 'אדמין' : 'חבר'}
-                      </span>
+                      <button onClick={() => handleRemoveMember(member.user_id, member.role)} className="text-red-400 hover:text-red-600 font-bold text-xl px-2 transition-colors" title="הסר משתמש">
+                        ×
+                      </button>
                     </div>
-                    <button onClick={() => handleRemoveMember(member.user_id, member.role)} className="text-red-500 hover:text-red-700 font-bold text-lg" title="הסר משתמש">
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ))}
+
+              {/* Accordion: Permissions (Admin Only) */}
+              {isAdmin && permissions && renderAccordion('permissions', 'הרשאות', '🔐', (
+                <div className="space-y-3 relative">
+                  {permSaved && <div className="absolute top-0 left-0 bg-brand-teal text-white text-xs px-2 py-1 rounded-lg animate-pulse">נשמר ✓</div>}
+                  
+                  {[
+                    { key: 'can_add_tasks', label: 'חברים יכולים להוסיף משימות' },
+                    { key: 'can_delete_tasks', label: 'חברים יכולים למחוק משימות' },
+                    { key: 'can_clear_lists', label: 'חברים יכולים לנקות רשימות מלאות' },
+                    { key: 'can_add_to_specific_lists_only', label: 'הוספה לרשימות ספציפיות בלבד' },
+                  ].map((p) => (
+                    <label key={p.key} className="flex items-center justify-between p-4 bg-white rounded-xl border border-neutral-100 shadow-sm cursor-pointer hover:bg-neutral-50 transition-colors">
+                      <span className="font-medium text-calm-text text-sm">{p.label}</span>
+                      <input 
+                        type="checkbox" 
+                        checked={permissions[p.key as keyof Permissions]} 
+                        onChange={(e) => handlePermissionChange(p.key as keyof Permissions, e.target.checked)} 
+                        className="w-5 h-5 accent-brand-teal" 
+                      />
+                    </label>
+                  ))}
+                </div>
+              ))}
+              
             </div>
           )}
-
-          {/* Admin: Permissions */}
-          {activeTab === 'permissions' && permissions && (
-            <div className="space-y-6 relative">
-              <div className="flex justify-between items-center">
-                <h2 className="text-xl font-bold text-[#1B2A4A]">הרשאות חברים</h2>
-                {permSaved && <span className="text-[#1A7A4A] font-medium text-sm animate-pulse">נשמר ✓</span>}
-              </div>
-              <div className="space-y-4">
-                <label className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200 cursor-pointer">
-                  <span className="font-medium text-[#4A5568]">חברים יכולים להוסיף משימות</span>
-                  <input type="checkbox" checked={permissions.can_add_tasks} onChange={(e) => handlePermissionChange('can_add_tasks', e.target.checked)} className="w-5 h-5 accent-[#1A7A4A]" />
-                </label>
-                <label className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200 cursor-pointer">
-                  <span className="font-medium text-[#4A5568]">חברים יכולים למחוק משימות</span>
-                  <input type="checkbox" checked={permissions.can_delete_tasks} onChange={(e) => handlePermissionChange('can_delete_tasks', e.target.checked)} className="w-5 h-5 accent-[#1A7A4A]" />
-                </label>
-                <label className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200 cursor-pointer">
-                  <span className="font-medium text-[#4A5568]">חברים יכולים לנקות רשימות מלאות</span>
-                  <input type="checkbox" checked={permissions.can_clear_lists} onChange={(e) => handlePermissionChange('can_clear_lists', e.target.checked)} className="w-5 h-5 accent-[#1A7A4A]" />
-                </label>
-                <label className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200 cursor-pointer">
-                  <span className="font-medium text-[#4A5568]">הוספה לרשימות ספציפיות בלבד</span>
-                  <input type="checkbox" checked={permissions.can_add_to_specific_lists_only} onChange={(e) => handlePermissionChange('can_add_to_specific_lists_only', e.target.checked)} className="w-5 h-5 accent-[#1A7A4A]" />
-                </label>
-              </div>
-            </div>
-          )}
-
-          {/* Tab: Premium (Placeholder - Temporarily Disabled) */}
-          {/* activeTab === 'premium' && (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-               <div className="text-6xl mb-6">⭐</div>
-               <h2 className="text-2xl font-bold text-[#1B2A4A] mb-2">מנוי פרימיום</h2>
-               <p className="text-gray-500 max-w-md mb-8">
-                 שדרוג לפרימיום יאפשר לכם להשתמש במודלים מתקדמים יותר של Claude, נפח זיכרון גדול יותר ותמיכה בריבוי משתתפים ללא הגבלה.
-               </p>
-               <div className="p-6 bg-orange-50 border border-orange-100 rounded-2xl w-full max-w-sm">
-                  <p className="text-orange-800 font-bold text-lg mb-1">בקרוב מאוד</p>
-                  <p className="text-orange-600 text-sm">התכונה נמצאת בפיתוח סופי</p>
-               </div>
-            </div>
-          ) */}
 
         </div>
-
-        {isAdmin && (
-          <div className="mt-12 bg-red-50 border border-red-200 p-8 rounded-2xl shadow-sm">
-            <h2 className="text-xl font-bold text-red-700 mb-2">אזור מסוכן</h2>
-            <p className="text-red-600 mb-6">
-              מחיקת הקבוצה תמחק את כל המשימות, הרשימות וחברי הקבוצה. פעולה זו בלתי הפיכה.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 items-center">
-              <input 
-                type="text" 
-                placeholder="הקלד 'DELETE' לאישור"
-                value={dissolveConfirm}
-                onChange={(e) => setDissolveConfirm(e.target.value)}
-                className="px-4 py-3 border border-red-300 rounded-xl focus:ring-red-500 outline-none w-full sm:w-auto font-mono text-center tracking-widest"
-              />
-              <button 
-                onClick={handleDissolve}
-                disabled={dissolveConfirm !== 'DELETE'}
-                className="px-8 py-3 bg-red-600 text-white rounded-xl font-bold disabled:opacity-50 hover:bg-red-700 w-full sm:w-auto transition-colors"
-              >
-                פזר קבוצה ומחק דשבורד
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

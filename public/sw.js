@@ -1,4 +1,4 @@
-const CACHE_NAME = 'familyos-cache-v2';
+const CACHE_NAME = 'familyos-cache-v3';
 
 const PRECACHE_ASSETS = [
   '/manifest.json',
@@ -14,7 +14,7 @@ self.addEventListener('install', (e) => {
   );
 });
 
-// Activate event — delete old caches to prevent stale root path
+// Activate event — aggressively delete all old caches
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -30,16 +30,29 @@ self.addEventListener('activate', (e) => {
   );
 });
 
-// Fetch event — Network First strategy
+// Fetch event — Network First strategy, but avoid caching HTML/navigation entirely
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
-  if (e.request.url.includes('/api/')) return;
+  
+  // Skip API requests and Chrome extensions
+  if (e.request.url.includes('/api/') || e.request.url.startsWith('chrome-extension')) return;
 
+  // For HTML navigation requests, force network and bypass service worker cache
+  if (e.request.mode === 'navigate' || (e.request.headers.get('accept') && e.request.headers.get('accept').includes('text/html'))) {
+    e.respondWith(
+      fetch(e.request).catch(() => {
+        return caches.match(e.request).then((response) => {
+          return response || new Response('<html><body><h2>אתה במצב לא מקוון. אנא בדוק את חיבור האינטרנט שלך.</h2></body></html>', {
+            headers: { 'Content-Type': 'text/html; charset=utf-8' }
+          });
+        });
+      })
+    );
+    return;
+  }
+
+  // Default Network-First for other assets
   e.respondWith(
-    fetch(e.request).catch(() => {
-      return caches.match(e.request).then((response) => {
-        return response || new Response('Offline');
-      });
-    })
+    fetch(e.request).catch(() => caches.match(e.request))
   );
 });

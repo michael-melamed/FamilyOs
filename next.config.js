@@ -21,18 +21,29 @@ const nextConfig = {
   images: {
     remotePatterns: [
       {
-        // Google OAuth profile pictures
         protocol: 'https',
         hostname: 'lh3.googleusercontent.com',
         pathname: '/**',
       },
       {
-        // Supabase storage avatars (future use)
         protocol: 'https',
         hostname: '*.supabase.co',
         pathname: '/**',
       },
     ],
+  },
+  async headers() {
+    return [
+      {
+        source: '/sw.js',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-cache, no-store, must-revalidate',
+          },
+        ],
+      },
+    ];
   },
 };
 

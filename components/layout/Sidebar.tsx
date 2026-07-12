@@ -123,27 +123,31 @@ export function Sidebar({ isOpen, onClose, householdId, tasks = [], onSwitchHous
 
         <div className="overflow-y-auto flex-1 p-4 flex flex-col gap-2 relative">
           
-          <div className="flex flex-col gap-3">
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 px-1">הקבוצות שלי</h3>
+          <div className="flex flex-col gap-1">
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 px-3">הקבוצות שלי</h3>
             
             {userHouseholds.map(h => (
               <div 
                 key={h.id}
                 onClick={() => onSwitchHousehold?.(h.id)}
-                className={`group p-3 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${h.id === householdId ? 'bg-[#1B2A4A] text-white border-[#1B2A4A] shadow-lg shadow-blue-900/20' : 'bg-white text-[#1B2A4A] border-[#C8D4E8] hover:border-[#1B2A4A]'}`}
+                className={`group px-3 py-2.5 rounded-xl cursor-pointer transition-colors flex items-center justify-between ${
+                  h.id === householdId 
+                    ? 'bg-brand-teal/10 text-brand-teal' 
+                    : 'bg-transparent text-calm-text hover:bg-neutral-50'
+                }`}
               >
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg ${h.id === householdId ? 'bg-white/20' : 'bg-gray-100 group-hover:bg-[#1B2A4A]/5'}`}>
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={`w-8 h-8 shrink-0 rounded-lg flex items-center justify-center font-bold text-sm ${
+                    h.id === householdId ? 'bg-brand-teal/20 text-brand-teal' : 'bg-neutral-100 text-muted-warm'
+                  }`}>
                     {h.name.charAt(0)}
                   </div>
-                  <span className="font-bold truncate max-w-[140px]">{h.name}</span>
+                  <span className="text-sm font-medium truncate">{h.name}</span>
                 </div>
-                {h.id === householdId ? (
-                  <span className="text-white/60 text-xs">פעיל</span>
-                ) : (
+                {h.id !== householdId && (
                   <button 
                     onClick={(e) => { e.stopPropagation(); window.location.href='/household/settings'; }}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity p-2 hover:bg-gray-100 rounded-lg"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-neutral-200 rounded-lg text-muted-warm shrink-0"
                     title="הגדרות קבוצה"
                   >⚙️</button>
                 )}
@@ -152,20 +156,20 @@ export function Sidebar({ isOpen, onClose, householdId, tasks = [], onSwitchHous
 
             <button 
               onClick={() => setActivePanel('הצטרפות ידנית')}
-              className="mt-2 p-4 border-2 border-dashed border-[#C8D4E8] rounded-2xl text-gray-500 text-sm hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+              className="mt-3 mx-2 p-3 border-2 border-dashed border-neutral-200 rounded-xl text-muted-warm text-sm hover:bg-neutral-50 transition-colors flex items-center justify-center gap-2 font-medium"
             >
-              <span className="text-xl">+</span> הצטרף לקבוצה חדשה
+              <span className="text-lg leading-none">+</span> הצטרף לקבוצה חדשה
             </button>
           </div>
 
-          <div className="mt-8 flex flex-col gap-2 border-t pt-6">
-            <a href="/household/settings" className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-xl transition-colors border border-transparent hover:border-gray-100">
-               <span className="text-xl">⚙️</span>
-               <span className="text-[#1B2A4A] font-medium">הגדרות קבוצה פעילה</span>
+          <div className="mt-8 flex flex-col space-y-4 border-t border-neutral-100 pt-6 px-2">
+            <a href="/household/settings" className="flex items-center gap-3 p-2 hover:bg-neutral-50 rounded-xl transition-colors">
+               <span className="text-lg opacity-70">⚙️</span>
+               <span className="text-calm-text text-sm font-medium">הגדרות קבוצה פעילה</span>
             </a>
-            <button onClick={handleExportTasks} className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-xl transition-colors border border-transparent hover:border-gray-100">
-               <span className="text-xl">📄</span>
-               <span className="text-[#1B2A4A] font-medium">ייצוא משימות</span>
+            <button onClick={handleExportTasks} className="flex items-center gap-3 p-2 hover:bg-neutral-50 rounded-xl transition-colors">
+               <span className="text-lg opacity-70">📄</span>
+               <span className="text-calm-text text-sm font-medium">ייצוא משימות</span>
             </button>
           </div>
 
