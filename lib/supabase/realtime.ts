@@ -55,9 +55,13 @@ export function useRealtimeTable(
           });
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        console.log(`[Realtime] Channel ${table}_changes_${familyId} status:`, status);
+        if (err) console.error('[Realtime] Error:', err);
+      });
 
     return () => {
+      console.log(`[Realtime] Leaving channel ${table}_changes_${familyId}`);
       supabase.removeChannel(channel);
     };
   }, [table, familyId, onUpdate]);

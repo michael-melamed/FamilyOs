@@ -55,6 +55,13 @@ function buildMessage(payload: RealtimePayload): { message: string; type: Notifi
     }
   }
 
+  if (table === 'lists') {
+    const name = newRow?.name || oldRow?.name || 'רשימה';
+    if (eventType === 'INSERT') return { message: `נוספה רשימה: "${name}"`, type: 'add' };
+    if (eventType === 'DELETE') return { message: `נמחקה רשימה: "${name}"`, type: 'delete' };
+    if (eventType === 'UPDATE') return { message: `עודכנה רשימה: "${name}"`, type: 'update' };
+  }
+
   return null;
 }
 
@@ -150,6 +157,7 @@ export function useBoard({ householdId, currentUserId, addNotification }: UseBoa
 
   useRealtimeTable('tasks', householdId ?? null, handleRealtimeEvent);
   useRealtimeTable('shopping_items', householdId ?? null, handleRealtimeEvent);
+  useRealtimeTable('lists', householdId ?? null, handleRealtimeEvent);
 
   return { tasks, shoppingItems, lists, permissions, isLoading, refetch, hasRecentUpdate, lastUpdatedBy };
 }
