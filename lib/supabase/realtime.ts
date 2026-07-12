@@ -1,55 +1,58 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { createClient } from './client';
 
 /**
  * @file lib/supabase/realtime.ts
  *
- * @description_he הגדרות לשירות זמן אמת (Realtime) של Supabase
- * @description_en Config for Supabase Realtime subscriptions
+ * @description_he מינוי לשינויים בזמן אמת ב-Supabase Realtime
+ * @description_en Supabase Realtime subscription hook — passes full event payload to callback
  *
- * @inputs    table name, familyId, onUpdate callback
- * @outputs   Realtime setup hook mapping
+ * @inputs    table name, familyId, onUpdate callback (receives payload)
+ * @outputs   Realtime subscription (auto-cleaned up on unmount)
  *
  * @depends_on   Supabase Browser Client
- * @used_by      React components
- *
- * @fix_guide
- *   - Events not firing: Verify RLS SELECT policies are properly validating the family.
- *
- * @example
- *   // useRealtimeTable('tasks', familyId, () => fetchTasks())
+ * @used_by      hooks/useBoard.ts
  */
+
+export type RealtimePayload = {
+  eventType: 'INSERT' | 'UPDATE' | 'DELETE';
+  new: Record<string, any>;
+  old: Record<string, any>;
+  table: string;
+};
+
 export function useRealtimeTable(
   table: string,
   familyId: string | null,
-  onUpdate: () => void
+  onUpdate: (payload: RealtimePayload) => void
 ) {
-  const onUpdateRef = useRef(onUpdate);
-
-  useEffect(() => {
-    onUpdateRef.current = onUpdate;
-  }, [onUpdate]);
-
   useEffect(() => {
     if (!familyId) return;
 
     const supabase = createClient();
-    
-    // Subscribe to changes on the given table for this family
+
     const channel = supabase
-      .channel(`${table}_changes`)
+      .channel(`${table}_changes_${familyId}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: table,
-          filter: table === 'tasks' || table === 'lists' ? `household_id=eq.${familyId}` : `family_id=eq.${familyId}`,
+          filter:
+            table === 'tasks' || table === 'lists'
+              ? `household_id=eq.${familyId}`
+              : `family_id=eq.${familyId}`,
         },
-        () => {
-          onUpdateRef.current();
+        (payload) => {
+          onUpdate({
+            eventType: payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE',
+            new: payload.new ?? {},
+            old: payload.old ?? {},
+            table,
+          });
         }
       )
       .subscribe();
@@ -57,5 +60,5 @@ export function useRealtimeTable(
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [table, familyId]);
+  }, [table, familyId, onUpdate]);
 }

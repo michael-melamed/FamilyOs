@@ -2,19 +2,21 @@
 
 /**
  * @file app/dashboard/page.tsx
- * @description_he דף הדשבורד (ניתוב /dashboard) — משלב Header, Sidebar, Board, PromptBar
- * @description_en Dashboard page — integrates Header, Sidebar, Board, and PromptBar.
+ * @description_he דף הדשבורד (ניתוב /dashboard) — משלב Header, Sidebar, Board, PromptBar, NotificationToast
+ * @description_en Dashboard page — integrates Header, Sidebar, Board, PromptBar and real-time notifications.
  *               Resolves householdId from the authenticated user's household_members row.
  * @inputs    None (reads auth session client-side)
  * @outputs   Dashboard page UI
  * @depends_on components/layout/Header.tsx, components/layout/Sidebar.tsx,
  *            components/dashboard/Board.tsx, components/prompt/PromptBar.tsx,
- *            hooks/useBoard.ts, lib/supabase/client.ts
+ *            components/layout/NotificationToast.tsx,
+ *            hooks/useBoard.ts, hooks/useNotifications.ts, lib/supabase/client.ts
  * @used_by   Next.js Router
  * @fix_guide
  *   - PromptBar is disabled → householdId is undefined; user must create or join a household
  *   - Board shows empty → RLS may be blocking; verify user is in household_members table
  *   - Sign-out not redirecting → middleware catches missing session and redirects to /login
+ *   - Notifications not showing → ensure currentUserId is set from session.user.id
  */
 
 import { useState, useEffect } from 'react';
@@ -22,7 +24,9 @@ import { Header } from '@/components/layout/Header';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Board } from '@/components/dashboard/Board';
 import { PromptBar } from '@/components/prompt/PromptBar';
+import { NotificationToast } from '@/components/layout/NotificationToast';
 import { useBoard } from '@/hooks/useBoard';
+import { useNotifications } from '@/hooks/useNotifications';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 
@@ -34,6 +38,10 @@ export default function DashboardPage() {
   const [successToast, setSuccessToast] = useState('');
   const [userName, setUserName] = useState<string | undefined>(undefined);
   const [userAvatar, setUserAvatar] = useState<string | undefined>(undefined);
+  const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
+
+  // Notification queue
+  const { notifications, addNotification, dismissNotification } = useNotifications();
 
   // Load authenticated user data and resolve their householdId
   useEffect(() => {
@@ -48,6 +56,7 @@ export default function DashboardPage() {
         const meta = session.user.user_metadata;
         setUserName(meta?.full_name ?? meta?.name ?? undefined);
         setUserAvatar(meta?.avatar_url ?? meta?.picture ?? undefined);
+        setCurrentUserId(session.user.id);
 
         // Try to get household from URL param, then localStorage
         const urlParams = new URLSearchParams(window.location.search);
@@ -103,7 +112,11 @@ export default function DashboardPage() {
     window.location.href = '/login';
   };
 
-  const { tasks, shoppingItems, lists, permissions, isLoading, refetch, hasRecentUpdate, lastUpdatedBy } = useBoard(householdId);
+  const { tasks, shoppingItems, lists, permissions, isLoading, refetch, hasRecentUpdate, lastUpdatedBy } = useBoard({
+    householdId,
+    currentUserId,
+    addNotification,
+  });
 
   const handleAgentResponse = (summary: string) => {
     setSuccessToast(summary);
@@ -152,6 +165,12 @@ export default function DashboardPage() {
       <PromptBar
         familyId={householdId}
         onAgentResponse={handleAgentResponse}
+      />
+
+      {/* Real-time notification toasts — only shown for changes made by OTHER household members */}
+      <NotificationToast
+        notifications={notifications}
+        onDismiss={dismissNotification}
       />
     </div>
   );
