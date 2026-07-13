@@ -64,9 +64,10 @@ export async function createHouseholdForUser(
     }
   }
 
-  // Build a Hebrew household name from the user's display name
-  const firstName = displayName?.split(' ')[0] ?? null;
-  const householdName = firstName ? `הבית של ${firstName}` : 'הבית שלי';
+  // Use the explicitly passed name, or fall back to a default
+  const householdName = displayName && displayName.trim().length > 0 
+    ? displayName.trim() 
+    : 'קבוצה חדשה';
 
   // 1. Create household (admin client bypasses RLS)
   const { data: newHousehold, error: householdErr } = await adminClient

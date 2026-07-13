@@ -160,6 +160,23 @@ export default function HouseholdSettingsPage() {
     }
   };
 
+  const handleLeaveHousehold = async () => {
+    if (!window.confirm(`האם אתה בטוח שברצונך לעזוב את הקבוצה "${householdName}"?`)) return;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || !householdId) return;
+      const ok = await removeMember(householdId, session.user.id);
+      if (ok) {
+        localStorage.removeItem('active_household_id');
+        router.push('/dashboard');
+      } else {
+        alert('שגיאה ביציאה מהקבוצה');
+      }
+    } catch (err) {
+      console.error('Failed to leave group', err);
+    }
+  };
+
   const handleAddList = async () => {
     if (!newListName.trim()) return;
     const savedId = localStorage.getItem('active_household_id');
@@ -437,31 +454,46 @@ export default function HouseholdSettingsPage() {
                 </div>
               )}
 
-              {/* Danger Zone - Only in General tab */}
-              {isAdmin && (
-                <div className="mt-8 bg-red-50/40 border border-red-100 p-5 rounded-3xl">
-                  <h2 className="text-base font-bold text-red-700 mb-1">אזור מסוכן</h2>
-                  <p className="text-sm text-red-600/80 mb-4">
-                    מחיקת הקבוצה תמחק את כל המשימות, הרשימות וחברי הקבוצה. פעולה זו בלתי הפיכה.
+              {/* Danger Zone */}
+              <div className="mt-8 bg-red-50/40 border border-red-100 p-5 rounded-3xl space-y-4">
+                <div>
+                  <h2 className="text-base font-bold text-red-700 mb-1">עזיבת קבוצה</h2>
+                  <p className="text-sm text-red-600/80 mb-3">
+                    פעולה זו תסיר אותך מהקבוצה "{householdName}". תוכל להצטרף מחדש רק באמצעות קוד הזמנה.
                   </p>
-                  <div className="flex flex-col sm:flex-row gap-3 items-center">
-                    <input 
-                      type="text" 
-                      placeholder="הקלד 'DELETE' לאישור"
-                      value={dissolveConfirm}
-                      onChange={(e) => setDissolveConfirm(e.target.value)}
-                      className="px-4 py-2 border border-red-200 rounded-xl focus:border-red-400 outline-none w-full sm:w-auto font-mono text-center tracking-widest text-sm bg-white"
-                    />
-                    <button 
-                      onClick={handleDissolve}
-                      disabled={dissolveConfirm !== 'DELETE'}
-                      className="px-6 py-2 bg-red-500 text-white rounded-xl font-bold disabled:opacity-50 hover:bg-red-600 w-full sm:w-auto transition-colors text-sm"
-                    >
-                      פזר קבוצה
-                    </button>
-                  </div>
+                  <button 
+                    onClick={handleLeaveHousehold}
+                    className="px-6 py-2 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-colors text-sm"
+                  >
+                    עזוב קבוצה
+                  </button>
                 </div>
-              )}
+
+                {isAdmin && (
+                  <div className="pt-4 border-t border-red-100">
+                    <h2 className="text-base font-bold text-red-700 mb-1">פיזור הקבוצה (אדמין בלבד)</h2>
+                    <p className="text-sm text-red-600/80 mb-4">
+                      מחיקת הקבוצה תמחק את כל המשימות, הרשימות וחברי הקבוצה. פעולה זו בלתי הפיכה.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-3 items-center">
+                      <input 
+                        type="text" 
+                        placeholder="הקלד 'DELETE' לאישור"
+                        value={dissolveConfirm}
+                        onChange={(e) => setDissolveConfirm(e.target.value)}
+                        className="px-4 py-2 border border-red-200 rounded-xl focus:border-red-400 outline-none w-full sm:w-auto font-mono text-center tracking-widest text-sm bg-white"
+                      />
+                      <button 
+                        onClick={handleDissolve}
+                        disabled={dissolveConfirm !== 'DELETE'}
+                        className="px-6 py-2 bg-red-600 text-white rounded-xl font-bold disabled:opacity-50 hover:bg-red-700 w-full sm:w-auto transition-colors text-sm"
+                      >
+                        פזר קבוצה לחלוטין
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
