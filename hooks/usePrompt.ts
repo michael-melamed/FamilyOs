@@ -62,8 +62,8 @@ export function usePrompt(familyId: string | undefined, onSuccess: (summary: str
         const assignee = evaluation.assignee;
         
         if (evaluation.intent === 'Add Shopping Item') {
-          const { createShoppingItem } = await import('@/lib/actions/shopping');
-          await createShoppingItem(familyId, finalPrompt);
+          const { addShoppingItem } = await import('@/lib/actions/shopping');
+          await addShoppingItem(familyId, finalPrompt);
         } else {
           await createTask(familyId, finalPrompt, assignee);
         }
