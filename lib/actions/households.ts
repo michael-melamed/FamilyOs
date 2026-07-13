@@ -100,7 +100,7 @@ export async function createHouseholdForUser(
   await adminClient.from('family_members').insert({
     family_id: household_id,
     user_id: userId,
-    display_name: firstName || 'Admin',
+    display_name: displayName || 'Admin',
     role: 'admin'
   });
 
