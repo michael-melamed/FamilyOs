@@ -119,7 +119,7 @@ export function Sidebar({ isOpen, onClose, householdId, tasks = [], onSwitchHous
       }
 
       if (onSwitchHousehold) {
-        onSwitchHousehold(data.household_id, hName);
+        onSwitchHousehold(data.household_id, newHouseholdName.trim());
       }
       setActivePanel(null);
       setNewHouseholdName('');
