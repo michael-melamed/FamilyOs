@@ -7,6 +7,7 @@
 export type RouteResult = {
   route: 'BLOCK' | 'AI' | 'DB';
   reason?: string;
+  intent?: string;
 };
 
 // Security Blacklist Regex
@@ -48,6 +49,12 @@ export function evaluateTask(text: string): RouteResult {
     return { route: 'AI' };
   }
 
-  // STEP 5: Fallback to simple DB insert
+  // STEP 5: Check if it's a shopping item based on keywords
+  const lower = trimmed.toLowerCase();
+  if (/\b(קנה|קני|לקנות|סופר|חלב|לחם|ביצים)\b/.test(lower)) {
+    return { route: 'DB', intent: 'Add Shopping Item' };
+  }
+
+  // STEP 6: Fallback to simple DB insert (Tasks)
   return { route: 'DB' };
 }
