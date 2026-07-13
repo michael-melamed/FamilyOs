@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { updateHouseholdName } from '@/lib/actions/households';
+import { updateHouseholdName, updateMemberRole, removeMember } from '@/lib/actions/households';
 import { loadMemory, upsertMemory, deleteMemory } from '@/lib/actions/memory';
 import { PushSubscriptionManager } from '@/components/dashboard/PushSubscriptionManager';
 import type { FamilyMemory, NotificationPreferences } from '@/types';
@@ -208,18 +208,24 @@ export default function HouseholdSettingsPage() {
     }
   };
 
-  const handleRemoveMember = async (userId: string, role: string) => {
+  const handleRemoveMemberAction = async (userId: string) => {
     if (!window.confirm(`להסיר את המשתמש מהקבוצה?`)) return;
-    const res = await fetch('/api/household/members/remove', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: userId, household_id: localStorage.getItem('active_household_id') })
-    });
-    if (res.ok) {
+    const ok = await removeMember(localStorage.getItem('active_household_id')!, userId);
+    if (ok) {
       setMembers(members.filter(m => m.user_id !== userId));
     } else {
-      const data = await res.json();
-      alert(data.error || 'שגיאה בהסרת המשתמש');
+      alert('שגיאה בהסרת המשתמש');
+    }
+  };
+
+  const handleToggleRole = async (userId: string, currentRole: string) => {
+    const newRole = currentRole === 'admin' ? 'member' : 'admin';
+    if (!window.confirm(`לשנות את הרשאת המשתמש ל-${newRole === 'admin' ? 'מנהל' : 'חבר'}?`)) return;
+    const ok = await updateMemberRole(localStorage.getItem('active_household_id')!, userId, newRole);
+    if (ok) {
+      setMembers(members.map(m => m.user_id === userId ? { ...m, role: newRole } : m));
+    } else {
+      alert('שגיאה בעדכון הרשאות המשתמש');
     }
   };
 
@@ -296,7 +302,14 @@ export default function HouseholdSettingsPage() {
 
   const [activeSection, setActiveSection] = useState<string | null>(null);
 
-  if (loading) return <div className="min-h-screen bg-calm-bg flex items-center justify-center">טוען...</div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-calm-bg p-4 flex flex-col items-center justify-center text-center">
+        <div className="w-12 h-12 border-4 border-brand-purple/20 border-t-brand-purple rounded-full animate-spin mb-4"></div>
+        <p className="text-calm-text/70 font-medium animate-pulse">פותח את אזור ההגדרות...</p>
+      </div>
+    );
+  }
 
   const tabs = isAdmin ? [
     { id: 'general', label: 'כללי' },
@@ -627,11 +640,15 @@ export default function HouseholdSettingsPage() {
                           <div className="font-medium text-calm-text text-sm">משתמש {member.user_id.substring(0,6)}</div>
                           <div className="text-xs text-muted-warm">הצטרף {new Date(member.joined_at).toLocaleDateString('he-IL')}</div>
                         </div>
-                        <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${member.role === 'admin' ? 'bg-brand-purple/10 text-brand-purple' : 'bg-neutral-100 text-muted-warm'}`}>
+                        <button 
+                          onClick={() => handleToggleRole(member.user_id, member.role)}
+                          className={`text-[10px] font-bold px-3 py-1.5 rounded-full transition-colors ${member.role === 'admin' ? 'bg-brand-purple text-white hover:bg-brand-purple/80' : 'bg-neutral-100 text-muted-warm hover:bg-neutral-200'}`}
+                          title="לחץ לשינוי תפקיד"
+                        >
                           {member.role === 'admin' ? 'אדמין' : 'חבר'}
-                        </span>
+                        </button>
                       </div>
-                      <button onClick={() => handleRemoveMember(member.user_id, member.role)} className="text-red-400 hover:text-red-600 font-bold text-xl px-2 transition-colors" title="הסר משתמש">
+                      <button onClick={() => handleRemoveMemberAction(member.user_id)} className="text-red-400 hover:text-red-600 font-bold text-xl px-2 transition-colors" title="הסר משתמש">
                         ×
                       </button>
                     </div>

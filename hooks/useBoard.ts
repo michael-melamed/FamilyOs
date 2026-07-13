@@ -116,7 +116,7 @@ export function useBoard({ householdId, currentUserId, addNotification }: UseBoa
 
     try {
       const [tasksRes, shoppingRes, listsRes, permsRes] = await Promise.all([
-        supabase.from('tasks').select('*').eq('household_id', householdId).order('position', { ascending: true }).order('created_at', { ascending: true }),
+        supabase.from('tasks').select('*').eq('family_id', householdId).order('position', { ascending: true }).order('created_at', { ascending: true }),
         supabase.from('shopping_items').select('*').eq('family_id', householdId).order('created_at', { ascending: true }),
         supabase.from('lists').select('*').eq('household_id', householdId),
         supabase.from('household_permissions').select('*').eq('household_id', householdId).single()

@@ -77,8 +77,13 @@ export async function clearCompletedTasks(familyId: string, list_id?: string): P
     query = query.is('list_id', null);
   }
   
-  const { error } = await query;
-  if (error) throw new Error(error.message);
+  try {
+    const { error } = await query;
+    if (error) throw error;
+  } catch (e: any) {
+    console.error('clearCompletedTasks failed. Check if migrations were run.', e);
+    throw new Error(e.message || 'Failed to clear completed tasks. Please check server logs.');
+  }
 }
 
 export async function reorderTasks(taskIds: string[]): Promise<void> {

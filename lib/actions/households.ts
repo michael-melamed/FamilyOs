@@ -207,3 +207,77 @@ export async function updateHouseholdName(householdId: string, newName: string):
 
   return true;
 }
+
+export async function updateMemberRole(householdId: string, targetUserId: string, newRole: 'admin' | 'member'): Promise<boolean> {
+  const supabase = createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Unauthorized");
+
+  // Verify caller is admin
+  const { data: caller } = await supabase
+    .from('household_members')
+    .select('role')
+    .eq('household_id', householdId)
+    .eq('user_id', session.user.id)
+    .single();
+
+  if (caller?.role !== 'admin') {
+    throw new Error("Only admins can change roles");
+  }
+
+  const adminClient = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  const { error } = await adminClient
+    .from('household_members')
+    .update({ role: newRole })
+    .eq('household_id', householdId)
+    .eq('user_id', targetUserId);
+
+  if (error) {
+    console.error("Failed to update role:", error);
+    return false;
+  }
+  return true;
+}
+
+export async function removeMember(householdId: string, targetUserId: string): Promise<boolean> {
+  const supabase = createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Unauthorized");
+
+  const isSelf = session.user.id === targetUserId;
+
+  if (!isSelf) {
+    // Verify caller is admin
+    const { data: caller } = await supabase
+      .from('household_members')
+      .select('role')
+      .eq('household_id', householdId)
+      .eq('user_id', session.user.id)
+      .single();
+
+    if (caller?.role !== 'admin') {
+      throw new Error("Only admins can remove other members");
+    }
+  }
+
+  const adminClient = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  const { error } = await adminClient
+    .from('household_members')
+    .delete()
+    .eq('household_id', householdId)
+    .eq('user_id', targetUserId);
+
+  if (error) {
+    console.error("Failed to remove member:", error);
+    return false;
+  }
+  return true;
+}

@@ -134,10 +134,16 @@ export async function parsePrompt(
 
   // Load shopping list from Supabase
   const supabase = createClient();
-  const { data: shoppingItems } = await supabase
-    .from('shopping_items')
-    .select('*')
-    .eq('family_id', familyId);
+  let shoppingItems: any[] | null = null;
+  try {
+    const { data } = await supabase
+      .from('shopping_items')
+      .select('*')
+      .eq('family_id', familyId);
+    shoppingItems = data;
+  } catch (e) {
+    console.warn('Could not fetch shopping items', e);
+  }
 
   const shoppingContext = shoppingItems && shoppingItems.length > 0
     ? `Current items in the shopping list:\n${shoppingItems.map(item => `- Name: ${item.name} | Quantity: ${item.quantity || 'N/A'} | Checked: ${item.checked ? 'Yes' : 'No'}`).join('\n')}`
@@ -189,13 +195,17 @@ export async function parsePrompt(
 
     const supabase = createClient();
     const { data: userData } = await supabase.auth.getUser();
-    await supabase.from('agent_logs').insert({
-      family_id: familyId,
-      user_id: userData.user?.id || null,
-      prompt,
-      actions: parsedOutput.actions,
-      summary: parsedOutput.summary,
-    });
+    try {
+      await supabase.from('agent_logs').insert({
+        family_id: familyId,
+        user_id: userData.user?.id || null,
+        prompt,
+        actions: parsedOutput.actions,
+        summary: parsedOutput.summary,
+      });
+    } catch (e) {
+      console.warn('Could not save agent log, table might be missing');
+    }
 
     return parsedOutput;
 
@@ -225,13 +235,17 @@ export async function parsePrompt(
 
     const supabase = createClient();
     const { data: userData } = await supabase.auth.getUser();
-    await supabase.from('agent_logs').insert({
-      family_id: familyId,
-      user_id: userData.user?.id || null,
-      prompt,
-      actions: fallback.actions,
-      summary: fallback.summary,
-    });
+    try {
+      await supabase.from('agent_logs').insert({
+        family_id: familyId,
+        user_id: userData.user?.id || null,
+        prompt,
+        actions: fallback.actions,
+        summary: fallback.summary,
+      });
+    } catch (e) {
+      console.warn('Could not save agent log in fallback, table might be missing');
+    }
 
     return fallback;
   }

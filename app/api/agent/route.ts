@@ -61,11 +61,17 @@ export async function POST(req: Request) {
     const callerRole = memberships[0].role;
 
     // Fetch household permissions to respect them
-    const { data: permissions } = await supabase
-      .from('household_permissions')
-      .select('*')
-      .eq('household_id', householdId)
-      .single();
+    let permissions = null;
+    try {
+      const { data } = await supabase
+        .from('household_permissions')
+        .select('*')
+        .eq('household_id', householdId)
+        .single();
+      permissions = data;
+    } catch (e) {
+      console.warn('Could not fetch permissions, defaulting to null', e);
+    }
 
     // Load active tasks for agent context (household-scoped)
     const { data: activeTasks } = await supabase

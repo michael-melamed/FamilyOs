@@ -8,7 +8,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { loadMemory } from '@/lib/actions/memory';
+import { removeMember } from '@/lib/actions/households';
 import type { FamilyMemory, Task } from '@/types';
 
 type SidebarProps = {
@@ -23,10 +23,13 @@ export function Sidebar({ isOpen, onClose, householdId, tasks = [], onSwitchHous
   const [activePanel, setActivePanel] = useState<string | null>(null);
   const [userHouseholds, setUserHouseholds] = useState<any[]>([]);
 
-  // Manual Join state
   const [manualCode, setManualCode] = useState('');
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
+
+  // Create Household state
+  const [newHouseholdName, setNewHouseholdName] = useState('');
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -38,12 +41,13 @@ export function Sidebar({ isOpen, onClose, householdId, tasks = [], onSwitchHous
 
       const { data: memberships } = await supabase
         .from('household_members')
-        .select('household_id, households(name)')
+        .select('household_id, role, households(name)')
         .eq('user_id', session.user.id);
       
       if (memberships) {
         setUserHouseholds(memberships.map(m => ({
           id: m.household_id,
+          role: m.role,
           name: (m.households as any)?.name || 'קבוצה ללא שם'
         })));
       }
@@ -80,6 +84,64 @@ export function Sidebar({ isOpen, onClose, householdId, tasks = [], onSwitchHous
       setJoinError(err.message);
     } finally {
       setJoining(false);
+    }
+  };
+
+  const handleCreateHousehold = async () => {
+    if (!newHouseholdName.trim()) return;
+    setCreating(true);
+    setJoinError(null);
+    try {
+      const res = await fetch('/api/household/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newHouseholdName.trim() })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'שגיאה ביצירת קבוצה');
+      
+      if (onSwitchHousehold) {
+        onSwitchHousehold(data.household_id);
+      }
+      setActivePanel(null);
+      setNewHouseholdName('');
+    } catch (err: any) {
+      setJoinError(err.message);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleLeaveOrDelete = async (h: any) => {
+    if (h.role === 'admin') {
+      if (!window.confirm(`האם אתה בטוח שברצונך לפזר את הקבוצה "${h.name}"? פעולה זו בלתי הפיכה!`)) return;
+      try {
+        const res = await fetch('/api/household/dissolve', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ confirm: true, household_id: h.id })
+        });
+        if (res.ok) {
+          setUserHouseholds(userHouseholds.filter(u => u.id !== h.id));
+          if (householdId === h.id) window.location.href = '/dashboard';
+        } else {
+          alert('שגיאה בפיזור הקבוצה');
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    } else {
+      if (!window.confirm(`האם אתה בטוח שברצונך לעזוב את הקבוצה "${h.name}"?`)) return;
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const ok = await removeMember(h.id, session.user.id);
+      if (ok) {
+        setUserHouseholds(userHouseholds.filter(u => u.id !== h.id));
+        if (householdId === h.id) window.location.href = '/dashboard';
+      } else {
+        alert('שגיאה ביציאה מהקבוצה');
+      }
     }
   };
 
@@ -145,27 +207,36 @@ export function Sidebar({ isOpen, onClose, householdId, tasks = [], onSwitchHous
                   <span className="text-sm font-medium truncate">{h.name}</span>
                 </div>
                 {h.id !== householdId && (
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); window.location.href='/household/settings'; }}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-neutral-200 rounded-lg text-muted-warm shrink-0"
-                    title="הגדרות קבוצה"
-                  >⚙️</button>
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <button 
+                      onClick={() => window.location.href=`/household/settings`}
+                      className="p-1.5 hover:bg-neutral-200 rounded-lg text-muted-warm"
+                      title="הגדרות"
+                    >⚙️</button>
+                    <button 
+                      onClick={() => handleLeaveOrDelete(h)}
+                      className="p-1.5 hover:bg-red-100 rounded-lg text-red-500 font-bold"
+                      title={h.role === 'admin' ? 'פזר קבוצה' : 'עזוב קבוצה'}
+                    >
+                      {h.role === 'admin' ? '🗑️' : '🚪'}
+                    </button>
+                  </div>
                 )}
               </div>
             ))}
 
             <div className="mt-3 mx-2 flex gap-2">
               <button 
-                onClick={() => window.location.href = '/household/setup'}
+                onClick={() => setActivePanel('יצירת קבוצה')}
                 className="flex-1 p-3 border border-neutral-200 rounded-xl text-brand-teal text-xs hover:bg-brand-teal/5 transition-colors flex flex-col items-center justify-center gap-1 font-bold bg-white"
               >
-                <span className="text-lg leading-none">🏠</span> יצירת קבוצה
+                <span className="text-lg leading-none">🏠</span> קבוצה חדשה
               </button>
               <button 
                 onClick={() => setActivePanel('הצטרפות ידנית')}
                 className="flex-1 p-3 border border-neutral-200 rounded-xl text-muted-warm text-xs hover:bg-neutral-50 transition-colors flex flex-col items-center justify-center gap-1 font-bold bg-white"
               >
-                <span className="text-lg leading-none">🔗</span> הצטרפות לקבוצה
+                <span className="text-lg leading-none">🔗</span> הצטרפות קיימת
               </button>
             </div>
           </div>
@@ -203,6 +274,32 @@ export function Sidebar({ isOpen, onClose, householdId, tasks = [], onSwitchHous
                   className="w-full mt-4 bg-[#1A7A4A] text-white py-4 rounded-xl font-bold disabled:opacity-50 transition-opacity"
                 >
                   {joining ? 'מתחבר...' : 'הצטרף עכשיו'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {activePanel === 'יצירת קבוצה' && (
+            <div className="absolute inset-0 bg-white z-20 p-6 flex flex-col gap-4 animate-in slide-in-from-left-4 text-center">
+              <button onClick={() => setActivePanel(null)} className="self-start text-gray-400 p-2 hover:bg-gray-100 rounded-full">← חזרה</button>
+              <div className="text-5xl mb-2 mt-8">🏠</div>
+              <h3 className="font-bold text-[#1B2A4A] text-lg">קבוצה חדשה</h3>
+              <p className="text-sm text-gray-500">תן שם לבית החדש (למשל "המשפחה של כהן"):</p>
+              <div className="mt-2">
+                <input 
+                  type="text"
+                  value={newHouseholdName}
+                  onChange={e => setNewHouseholdName(e.target.value)}
+                  placeholder="שם הקבוצה"
+                  className="w-full text-center text-xl font-bold py-3 border-2 border-[#C8D4E8] rounded-xl focus:border-[#1A7A4A] outline-none transition-colors"
+                />
+                {joinError && <p className="text-red-500 text-xs mt-2">{joinError}</p>}
+                <button
+                  onClick={handleCreateHousehold}
+                  disabled={creating || !newHouseholdName.trim()}
+                  className="w-full mt-4 bg-[#1A7A4A] text-white py-4 rounded-xl font-bold disabled:opacity-50 transition-opacity"
+                >
+                  {creating ? 'יוצר...' : 'צור קבוצה'}
                 </button>
               </div>
             </div>
