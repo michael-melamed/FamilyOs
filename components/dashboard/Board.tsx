@@ -30,12 +30,9 @@ type BoardProps = {
 export function Board({ tasks, shoppingItems, lists = [], permissions, familyId, isLoading, onUpdate }: BoardProps) {
   if (isLoading) {
     return (
-      <div className="flex flex-col gap-6 w-full animate-pulse">
-        <div className="h-6 w-32 bg-[#C8D4E8] rounded mb-2"></div>
-        <div className="h-40 w-full bg-white rounded-xl shadow-sm border border-[#C8D4E8]"></div>
-        
-        <div className="h-6 w-32 bg-[#C8D4E8] rounded mt-4 mb-2"></div>
-        <div className="h-40 w-full bg-white rounded-xl shadow-sm border border-[#C8D4E8]"></div>
+      <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
+        <div className="w-12 h-12 border-4 border-brand-teal/20 border-t-brand-teal rounded-full animate-spin"></div>
+        <p className="text-brand-teal font-medium animate-pulse">טוען נתונים...</p>
       </div>
     );
   }
