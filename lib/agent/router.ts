@@ -10,11 +10,11 @@ export type RouteResult = {
   intent?: string;
 };
 
-// Security Blacklist Regex
-const BLACKLIST_REGEX = /\b(פצצה|נשק|להרוג|התעלם|prompt|ignore|system)\b/i;
+// Security Blacklist Regex (without \b since it fails on Hebrew)
+const BLACKLIST_REGEX = /(^|\s)(פצצה|נשק|להרוג|התעלם|prompt|ignore|system)(\s|$)/i;
 
-// AI Intent Keywords Regex (Planning, creation, recommendation)
-const AI_KEYWORDS_REGEX = /\b(איך|מתכון|מצרכים|שלבים|רעיונות|המלצה|תמליץ|מה צריך|תכנון)\b/;
+// AI Intent Keywords Regex
+const AI_KEYWORDS_REGEX = /(^|\s)(איך|מתכון|מצרכים|שלבים|רעיונות|המלצה|תמליץ|מה צריך|תכנון)(\s|$)/;
 
 /**
  * Evaluates the task string and returns the routing instruction.
@@ -51,7 +51,7 @@ export function evaluateTask(text: string): RouteResult {
 
   // STEP 5: Check if it's a shopping item based on keywords
   const lower = trimmed.toLowerCase();
-  if (/\b(קנה|קני|לקנות|סופר|חלב|לחם|ביצים)\b/.test(lower)) {
+  if (/(^|\s)(קנה|קני|לקנות|סופר|חלב|לחם|ביצים)(\s|$)/.test(lower)) {
     return { route: 'DB', intent: 'Add Shopping Item' };
   }
 
