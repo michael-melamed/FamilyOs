@@ -8,14 +8,16 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!;
-const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY!;
+const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
 
-webpush.setVapidDetails(
-  'mailto:support@familyos.com',
-  vapidPublicKey,
-  vapidPrivateKey
-);
+if (vapidPublicKey && vapidPrivateKey) {
+  webpush.setVapidDetails(
+    'mailto:support@familyos.com',
+    vapidPublicKey,
+    vapidPrivateKey
+  );
+}
 
 export async function POST(req: Request) {
   try {
