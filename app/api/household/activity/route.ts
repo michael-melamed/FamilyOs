@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 import type { ApiResponse, ActivityLog } from '@/types';
 
 export async function GET(req: Request) {
@@ -48,7 +49,27 @@ export async function GET(req: Request) {
 
     if (logsError) throw logsError;
 
-    return NextResponse.json({ data: logs as ActivityLog[] });
+    // Fetch real user names using Admin Client
+    const supabaseAdmin = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const enrichedLogs = await Promise.all((logs || []).map(async (log) => {
+      if (log.actor_id) {
+        try {
+          const { data: { user } } = await supabaseAdmin.auth.admin.getUserById(log.actor_id);
+          if (user?.user_metadata) {
+            log.actor_name = user.user_metadata.full_name || user.user_metadata.name || log.actor_name;
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+      return log;
+    }));
+
+    return NextResponse.json({ data: enrichedLogs as ActivityLog[] });
 
   } catch (err: any) {
     console.error('Error fetching activity logs:', err);

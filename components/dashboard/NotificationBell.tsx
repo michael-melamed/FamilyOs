@@ -116,7 +116,7 @@ export function NotificationBell({ householdId, hasRecentUpdate, currentUserId }
       </button>
 
       {isOpen && (
-        <div className="absolute top-full -left-12 sm:-right-4 mt-2 w-[85vw] max-w-[320px] sm:w-96 bg-white text-calm-text rounded-2xl shadow-xl border border-neutral-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-4 duration-200">
+        <div className="absolute top-full left-0 sm:-right-4 mt-2 w-[85vw] max-w-[320px] sm:w-96 bg-white text-calm-text rounded-2xl shadow-xl border border-neutral-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-4 duration-200 origin-top-left">
           <div className="p-4 bg-neutral-50 border-b border-neutral-100 flex justify-between items-center">
             <h3 className="font-bold text-lg">פעילות אחרונה</h3>
             <a href="/household/settings#notifications" className="text-xs text-brand-teal hover:underline font-medium">
