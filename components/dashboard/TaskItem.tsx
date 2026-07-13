@@ -172,7 +172,7 @@ export function TaskItem({ task, subTasks = [], onUpdate, can_delete = false, dr
           {can_delete && !isEditing && (
             <button 
               onClick={handleDelete}
-              className="text-gray-400 hover:text-red-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity px-2"
+              className="text-gray-400 hover:text-red-500 font-bold opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity px-2"
               title="מחק משימה"
             >
               ×

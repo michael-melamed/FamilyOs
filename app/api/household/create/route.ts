@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await createHouseholdForUser(session.user.id, name);
+    const result = await createHouseholdForUser(session.user.id, name, true);
     return NextResponse.json(result);
   } catch (err: any) {
     console.error('Failed to create household:', err);

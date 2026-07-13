@@ -30,7 +30,8 @@ function generateInviteCode(): string {
 
 export async function createHouseholdForUser(
   userId: string,
-  displayName?: string
+  displayName?: string,
+  forceNew: boolean = false
 ): Promise<{ household_id: string; invite_url: string }> {
   // Regular client — used only for the membership guard SELECT (subject to RLS)
   const supabase = createClient();
@@ -46,19 +47,21 @@ export async function createHouseholdForUser(
   // Guard: if this user already has a household_members row, return their existing household
   // We MUST use adminClient here, because during OAuth callback the session cookies are not yet
   // available to createClient(), causing RLS to falsely return 0 rows for the regular client.
-  const { data: existingMembers } = await adminClient
-    .from('household_members')
-    .select('household_id')
-    .eq('user_id', userId)
-    .limit(1);
+  if (!forceNew) {
+    const { data: existingMembers } = await adminClient
+      .from('household_members')
+      .select('household_id')
+      .eq('user_id', userId)
+      .limit(1);
 
-  if (existingMembers && existingMembers.length > 0) {
-    const code = generateInviteCode();
-    // Return existing household — no new household created
-    return {
-      household_id: existingMembers[0].household_id,
-      invite_url: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/join/${code}`,
-    };
+    if (existingMembers && existingMembers.length > 0) {
+      const code = generateInviteCode();
+      // Return existing household — no new household created
+      return {
+        household_id: existingMembers[0].household_id,
+        invite_url: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/join/${code}`,
+      };
+    }
   }
 
   // Build a Hebrew household name from the user's display name

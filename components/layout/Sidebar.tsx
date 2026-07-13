@@ -100,6 +100,24 @@ export function Sidebar({ isOpen, onClose, householdId, tasks = [], onSwitchHous
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'שגיאה ביצירת קבוצה');
       
+      // Refetch households to update the list
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data: memberships } = await supabase
+          .from('household_members')
+          .select('household_id, role, households(name)')
+          .eq('user_id', session.user.id);
+        
+        if (memberships) {
+          setUserHouseholds(memberships.map(m => ({
+            id: m.household_id,
+            role: m.role,
+            name: (m.households as any)?.name || 'קבוצה ללא שם'
+          })));
+        }
+      }
+
       if (onSwitchHousehold) {
         onSwitchHousehold(data.household_id);
       }
@@ -206,22 +224,6 @@ export function Sidebar({ isOpen, onClose, householdId, tasks = [], onSwitchHous
                   </div>
                   <span className="text-sm font-medium truncate">{h.name}</span>
                 </div>
-                {h.id !== householdId && (
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                    <button 
-                      onClick={() => window.location.href=`/household/settings`}
-                      className="p-1.5 hover:bg-neutral-200 rounded-lg text-muted-warm"
-                      title="הגדרות"
-                    >⚙️</button>
-                    <button 
-                      onClick={() => handleLeaveOrDelete(h)}
-                      className="p-1.5 hover:bg-red-100 rounded-lg text-red-500 font-bold"
-                      title={h.role === 'admin' ? 'פזר קבוצה' : 'עזוב קבוצה'}
-                    >
-                      {h.role === 'admin' ? '🗑️' : '🚪'}
-                    </button>
-                  </div>
-                )}
               </div>
             ))}
 
@@ -246,10 +248,6 @@ export function Sidebar({ isOpen, onClose, householdId, tasks = [], onSwitchHous
                <span className="text-lg opacity-70">⚙️</span>
                <span className="text-calm-text text-sm font-medium">הגדרות קבוצה פעילה</span>
             </a>
-            <button onClick={handleExportTasks} className="flex items-center gap-3 p-2 hover:bg-neutral-50 rounded-xl transition-colors">
-               <span className="text-lg opacity-70">📄</span>
-               <span className="text-calm-text text-sm font-medium">ייצוא משימות</span>
-            </button>
           </div>
 
           {activePanel === 'הצטרפות ידנית' && (
@@ -305,15 +303,6 @@ export function Sidebar({ isOpen, onClose, householdId, tasks = [], onSwitchHous
             </div>
           )}
 
-        </div>
-
-        <div className="p-4 border-t border-[#C8D4E8] shrink-0">
-          <button
-            onClick={handleSignOut}
-            className="w-full flex items-center justify-center gap-2 text-sm text-red-500 hover:bg-red-50 border border-red-200 hover:border-red-300 rounded-xl py-2 transition-colors font-medium"
-          >
-            <span>🚪</span> יציאה מהחשבון
-          </button>
         </div>
       </aside>
     </>
