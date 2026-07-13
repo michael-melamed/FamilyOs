@@ -66,7 +66,7 @@ export function TaskItem({ task, subTasks = [], onUpdate, can_delete = false, dr
     
     try {
       if (isDone) {
-        await updateTask(task.id, { status: 'todo' });
+        await updateTask(task.id, { status: 'pending' });
       } else {
         await updateTask(task.id, { status: 'done' });
       }
@@ -192,7 +192,7 @@ export function TaskItem({ task, subTasks = [], onUpdate, can_delete = false, dr
             <div key={subTask.id} className="flex items-center gap-3 py-2 border-t border-dashed border-gray-100 first:border-t-0">
               <button 
                 onClick={async () => {
-                  await updateTask(subTask.id, { status: subTask.status === 'done' ? 'todo' : 'done' });
+                  await updateTask(subTask.id, { status: subTask.status === 'done' ? 'pending' : 'done' });
                   onUpdate();
                 }}
                 className={`w-5 h-5 shrink-0 rounded-full border-2 flex items-center justify-center transition-colors ${subTask.status === 'done' ? 'border-brand-teal bg-brand-teal text-white' : 'border-[#C8D4E8] text-transparent hover:border-[#1A7A4A]'}`}
