@@ -67,8 +67,8 @@ export function ShoppingList({ items, familyId, onUpdate, is_locked = false, can
       </div>
 
       {items.length === 0 ? (
-        <div className="bg-white rounded-2xl shadow-sm p-8 text-center text-muted-warm border border-neutral-100 border-dashed">
-          העגלה ריקה! כתוב מה חסר בשורת הפקודה
+        <div className="w-full bg-brand-purple/[0.02] rounded-xl py-4 px-4 border border-brand-purple/15 text-center">
+          <p className="text-sm font-medium text-calm-text/70">בעגלה זו הכל שקט.</p>
         </div>
       ) : (
         <div className={`flex flex-col ${is_locked ? 'opacity-70 pointer-events-none' : ''}`}>

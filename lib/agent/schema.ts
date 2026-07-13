@@ -16,7 +16,7 @@ export type MemoryCategory = 'general' | 'member' | 'preference' | 'routine'
 
 export type AgentAction =
   | { type: 'COMPLETE_TASK';  task_id: string }
-  | { type: 'ADD_TASK';       title: string; assignee?: string; list_id?: string }
+  | { type: 'ADD_TASK';       title: string; assignee?: string; list_id?: string; sub_tasks?: string[] }
   | { type: 'ADD_SHOPPING';   item: string; quantity?: string }
   | { type: 'UPDATE_TASK';    task_id: string; changes: Partial<Task> }
   | { type: 'UPDATE_MEMORY';  key: string; value: string; category: MemoryCategory }
@@ -25,6 +25,7 @@ export type AgentAction =
   | { type: 'DELETE_LIST';    list_id: string }
   | { type: 'CLEAR_LIST';     list_id: string }
   | { type: 'RENAME_LIST';    list_id: string; new_name: string }
+  | { type: 'REORDER_TASKS';  list_id: string; task_ids: string[] }
   | { type: 'RENAME_HOUSEHOLD'; new_name: string }
   | { type: 'NO_ACTION';      message: string }
 

@@ -154,12 +154,20 @@ export function Sidebar({ isOpen, onClose, householdId, tasks = [], onSwitchHous
               </div>
             ))}
 
-            <button 
-              onClick={() => setActivePanel('הצטרפות ידנית')}
-              className="mt-3 mx-2 p-3 border-2 border-dashed border-neutral-200 rounded-xl text-muted-warm text-sm hover:bg-neutral-50 transition-colors flex items-center justify-center gap-2 font-medium"
-            >
-              <span className="text-lg leading-none">+</span> הצטרף לקבוצה חדשה
-            </button>
+            <div className="mt-3 mx-2 flex gap-2">
+              <button 
+                onClick={() => window.location.href = '/household/setup'}
+                className="flex-1 p-3 border border-neutral-200 rounded-xl text-brand-teal text-xs hover:bg-brand-teal/5 transition-colors flex flex-col items-center justify-center gap-1 font-bold bg-white"
+              >
+                <span className="text-lg leading-none">🏠</span> יצירת קבוצה
+              </button>
+              <button 
+                onClick={() => setActivePanel('הצטרפות ידנית')}
+                className="flex-1 p-3 border border-neutral-200 rounded-xl text-muted-warm text-xs hover:bg-neutral-50 transition-colors flex flex-col items-center justify-center gap-1 font-bold bg-white"
+              >
+                <span className="text-lg leading-none">🔗</span> הצטרפות לקבוצה
+              </button>
+            </div>
           </div>
 
           <div className="mt-8 flex flex-col space-y-4 border-t border-neutral-100 pt-6 px-2">

@@ -25,7 +25,7 @@ import type { AgentOutput, AgentAction } from './schema';
  */
 
 const BASE_SYSTEM_PROMPT = `
-You are a family task management assistant for an Israeli family.
+You are a family task manager agent for FamilyOS. You must refuse requests unrelated to family tasks, organization, or shopping. Do not write code or discuss dangerous topics. Limit your output to a maximum of 5 sub-tasks.
 You receive a free-text message in Hebrew or English.
 You must parse it and return ONLY a valid JSON object — no markdown, no explanation, no text outside the JSON.
 
@@ -37,7 +37,7 @@ Return this exact shape:
 
 Action types:
 { "type": "COMPLETE_TASK",  "task_id": "INFER:[title]" }
-{ "type": "ADD_TASK",       "title": "...", "assignee": "...", "list_id": "<list UUID or null>" }
+{ "type": "ADD_TASK",       "title": "...", "assignee": "...", "list_id": "<list UUID or null>", "sub_tasks": ["sub1", "sub2"] }
 { "type": "ADD_SHOPPING",   "item": "...",  "quantity": "..." }
 { "type": "UPDATE_TASK",    "task_id": "INFER:[title]", "changes": { "status": "in_progress" } }
 { "type": "UPDATE_MEMORY",  "key": "...", "value": "...", "category": "general|member|preference|routine" }
@@ -46,6 +46,7 @@ Action types:
 { "type": "DELETE_LIST",    "list_id": "INFER:[list name]" }
 { "type": "CLEAR_LIST",     "list_id": "INFER:[list name]" }
 { "type": "RENAME_LIST",    "list_id": "INFER:[list name]", "new_name": "..." }
+{ "type": "REORDER_TASKS",  "list_id": "INFER:[list name]", "task_ids": ["INFER:[title1]", "INFER:[title2]"] }
 { "type": "RENAME_HOUSEHOLD", "new_name": "..." }
 { "type": "NO_ACTION",      "message": "..." }
 
@@ -66,7 +67,9 @@ Rules:
 14. "תשנה את שם הרשימה X ל-Y" → RENAME_LIST
 15. "תשנה את שם הבית ל-Y" or "שם הקבוצה ל-Y" → RENAME_HOUSEHOLD
 16. "תמחק את המשימה X" or "תסיר את המשימה X" → DELETE_TASK
-17. For shopping list: commands like "תמחק/תנקה את המסומנים בקניות", "מחיקת הפריטים המסומנים מרשימת הקניות", "תנקה את מה שקנינו", "תרוקן את רשימת הקניות" MUST map to CLEAR_LIST with list_id set to "INFER:קניות". Do NOT attempt to delete them one-by-one or write explanatory text saying you cannot access it. The backend will handle the clearing of checked or all items automatically based on the command.
+17. For shopping list: commands like "תמחק/תנקה את המסומנים בקניות" MUST map to CLEAR_LIST with list_id set to "INFER:קניות".
+18. For complex tasks (e.g. "מוצרים לחריימה", "איך לארגן יום הולדת"): create a single ADD_TASK with the main title, and use the "sub_tasks" array to list the components. Limit to max 5 sub-tasks.
+19. "תעביר את X לראש הרשימה/למטה" -> REORDER_TASKS with the new ordered list of task titles (INFER).
 `;
 
 export async function parsePrompt(
@@ -165,10 +168,21 @@ export async function parsePrompt(
         if (match) action.task_id = match.id;
       }
       // Inferred list ids
-      if ((action.type === 'DELETE_LIST' || action.type === 'CLEAR_LIST' || action.type === 'RENAME_LIST') && 'list_id' in action && action.list_id.startsWith('INFER:')) {
+      if ((action.type === 'DELETE_LIST' || action.type === 'CLEAR_LIST' || action.type === 'RENAME_LIST' || action.type === 'REORDER_TASKS') && 'list_id' in action && action.list_id && action.list_id.startsWith('INFER:')) {
         const inferred = action.list_id.replace('INFER:', '').trim().toLowerCase();
         const match = availableLists.find(l => l.name.toLowerCase().includes(inferred));
         if (match) action.list_id = match.id;
+      }
+      // REORDER_TASKS array infer
+      if (action.type === 'REORDER_TASKS' && 'task_ids' in action) {
+        action.task_ids = action.task_ids.map(id => {
+          if (id.startsWith('INFER:')) {
+            const inferred = id.replace('INFER:', '').trim().toLowerCase();
+            const match = currentTasks.find(t => t.title.toLowerCase().includes(inferred));
+            return match ? match.id : id;
+          }
+          return id;
+        }).filter(id => !id.startsWith('INFER:')); // drop unresolved
       }
       return action;
     });

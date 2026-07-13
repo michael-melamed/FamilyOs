@@ -19,7 +19,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRealtimeTable, type RealtimePayload } from '@/lib/supabase/realtime';
-import type { Task, ShoppingItem } from '@/types';
+import type { Task, ShoppingItem, NotificationPreferences } from '@/types';
 import type { NotificationType } from '@/hooks/useNotifications';
 
 type UseBoardOptions = {
@@ -28,36 +28,61 @@ type UseBoardOptions = {
   addNotification: (message: string, type: NotificationType) => void;
 };
 
+const DEFAULT_PREFS: NotificationPreferences = {
+  notify_on_add: true,
+  notify_on_complete: true,
+  detailed_notifications: false,
+  muted_list_ids: []
+};
+
 /** Build a human-friendly Hebrew notification message from a realtime payload */
-function buildMessage(payload: RealtimePayload): { message: string; type: NotificationType } | null {
+function buildMessage(payload: RealtimePayload, prefs: NotificationPreferences): { message: string; type: NotificationType } | null {
   const { eventType, table, new: newRow, old: oldRow } = payload;
 
   if (table === 'tasks') {
     const title = newRow?.title || oldRow?.title || 'משימה';
     const actor = newRow?.assignee || null;
     const who = actor ? `${actor}` : 'חבר/ה';
-
-    if (eventType === 'INSERT') return { message: `${who} הוסיפ/ה משימה: "${title}"`, type: 'add' };
-    if (eventType === 'DELETE') return { message: `${who} מחק/ה משימה: "${title}"`, type: 'delete' };
+    
+    // Check event types against preferences
+    if (eventType === 'INSERT') {
+      if (!prefs.notify_on_add) return null;
+      return { message: `${who} הוסיפ/ה משימה: "${title}"`, type: 'add' };
+    }
+    if (eventType === 'DELETE') {
+      return { message: `${who} מחק/ה משימה: "${title}"`, type: 'delete' };
+    }
     if (eventType === 'UPDATE') {
-      if (newRow?.status === 'done') return { message: `${who} סימנ/ה כהושלמה: "${title}"`, type: 'complete' };
+      if (newRow?.status === 'done') {
+        if (!prefs.notify_on_complete) return null;
+        return { message: `${who} סימנ/ה כהושלמה: "${title}"`, type: 'complete' };
+      }
       return { message: `${who} עדכנ/ה משימה: "${title}"`, type: 'update' };
     }
   }
 
   if (table === 'shopping_items') {
     const name = newRow?.name || oldRow?.name || 'פריט';
-    if (eventType === 'INSERT') return { message: `נוסף לקניות: "${name}"`, type: 'add' };
+    if (eventType === 'INSERT') {
+      if (!prefs.notify_on_add) return null;
+      return { message: `נוסף לקניות: "${name}"`, type: 'add' };
+    }
     if (eventType === 'DELETE') return { message: `הוסר מהקניות: "${name}"`, type: 'delete' };
     if (eventType === 'UPDATE') {
-      if (newRow?.checked === true) return { message: `סומן כנקנה: "${name}"`, type: 'complete' };
+      if (newRow?.checked === true) {
+        if (!prefs.notify_on_complete) return null;
+        return { message: `סומן כנקנה: "${name}"`, type: 'complete' };
+      }
       return { message: `עודכן בקניות: "${name}"`, type: 'update' };
     }
   }
 
   if (table === 'lists') {
     const name = newRow?.name || oldRow?.name || 'רשימה';
-    if (eventType === 'INSERT') return { message: `נוספה רשימה: "${name}"`, type: 'add' };
+    if (eventType === 'INSERT') {
+      if (!prefs.notify_on_add) return null;
+      return { message: `נוספה רשימה: "${name}"`, type: 'add' };
+    }
     if (eventType === 'DELETE') return { message: `נמחקה רשימה: "${name}"`, type: 'delete' };
     if (eventType === 'UPDATE') return { message: `עודכנה רשימה: "${name}"`, type: 'update' };
   }
@@ -70,6 +95,7 @@ export function useBoard({ householdId, currentUserId, addNotification }: UseBoa
   const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>([]);
   const [lists, setLists] = useState<any[]>([]);
   const [permissions, setPermissions] = useState<any>(null);
+  const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences>(DEFAULT_PREFS);
   const [isLoading, setIsLoading] = useState(true);
 
   const [hasRecentUpdate, setHasRecentUpdate] = useState(false);
@@ -89,75 +115,70 @@ export function useBoard({ householdId, currentUserId, addNotification }: UseBoa
     }
 
     try {
-      const { data: tasksData } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('household_id', householdId)
-        .order('position', { ascending: true })
-        .order('created_at', { ascending: true });
+      const [tasksRes, shoppingRes, listsRes, permsRes] = await Promise.all([
+        supabase.from('tasks').select('*').eq('household_id', householdId).order('position', { ascending: true }).order('created_at', { ascending: true }),
+        supabase.from('shopping_items').select('*').eq('family_id', householdId).order('created_at', { ascending: true }),
+        supabase.from('lists').select('*').eq('household_id', householdId),
+        supabase.from('household_permissions').select('*').eq('household_id', householdId).single()
+      ]);
 
-      const { data: shoppingData } = await supabase
-        .from('shopping_items')
-        .select('*')
-        .eq('family_id', householdId)
-        .order('created_at', { ascending: true });
+      if (currentUserId && !isRealtimeUpdate) {
+        const { data: memberData } = await supabase
+          .from('household_members')
+          .select('notification_preferences')
+          .eq('household_id', householdId)
+          .eq('user_id', currentUserId)
+          .single();
+        
+        if (memberData?.notification_preferences) {
+          setNotificationPrefs(memberData.notification_preferences as NotificationPreferences);
+        }
+      }
 
-      const { data: listsData } = await supabase
-        .from('lists')
-        .select('*')
-        .eq('household_id', householdId);
-
-      const { data: permsData } = await supabase
-        .from('household_permissions')
-        .select('*')
-        .eq('household_id', householdId)
-        .single();
-
-      if (tasksData) setTasks(tasksData as Task[]);
-      if (shoppingData) setShoppingItems(shoppingData as ShoppingItem[]);
-      if (listsData) setLists(listsData);
-      if (permsData) setPermissions(permsData);
+      if (tasksRes.data) setTasks(tasksRes.data as Task[]);
+      if (shoppingRes.data) setShoppingItems(shoppingRes.data as ShoppingItem[]);
+      if (listsRes.data) setLists(listsRes.data);
+      if (permsRes.data) setPermissions(permsRes.data);
     } catch (err) {
       console.error('Failed fetching board data:', err);
     } finally {
       setIsLoading(false);
     }
-  }, [householdId, supabase]);
+  }, [householdId, currentUserId, supabase]);
 
   useEffect(() => {
     if (householdId) refetch(false);
   }, [householdId, refetch]);
 
   const handleRealtimeEvent = useCallback((payload: RealtimePayload) => {
-    // Refetch to get latest data
     refetch(true);
 
-    // Determine who triggered the change
     const changedBy = payload.new?.created_by || payload.old?.created_by;
 
-    // Update last updater indicator in header
     if (changedBy && changedBy !== currentUserId) {
       setLastUpdatedBy(changedBy);
     }
 
-    // Only notify if the change was made by SOMEONE ELSE
     if (!currentUserId || changedBy === currentUserId) return;
 
-    // Debounce: max 1 notification per table per 800ms
+    // Filter out muted lists
+    const listId = payload.new?.list_id || payload.old?.list_id;
+    if (listId && notificationPrefs.muted_list_ids?.includes(listId)) return;
+
     const now = Date.now();
     const lastTime = lastNotifTime.current[payload.table] ?? 0;
     if (now - lastTime < 800) return;
     lastNotifTime.current[payload.table] = now;
 
-    const result = buildMessage(payload);
+    const result = buildMessage(payload, notificationPrefs);
     if (result) {
       addNotification(result.message, result.type);
     }
-  }, [refetch, currentUserId, addNotification]);
+  }, [refetch, currentUserId, notificationPrefs, addNotification]);
 
   useRealtimeTable('tasks', householdId ?? null, handleRealtimeEvent);
   useRealtimeTable('shopping_items', householdId ?? null, handleRealtimeEvent);
   useRealtimeTable('lists', householdId ?? null, handleRealtimeEvent);
 
-  return { tasks, shoppingItems, lists, permissions, isLoading, refetch, hasRecentUpdate, lastUpdatedBy };
+  return { tasks, shoppingItems, lists, permissions, notificationPrefs, isLoading, refetch, hasRecentUpdate, lastUpdatedBy };
 }

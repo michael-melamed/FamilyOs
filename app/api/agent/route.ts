@@ -93,10 +93,16 @@ export async function POST(req: Request) {
     for (const action of agentOutput.actions) {
       try {
         switch (action.type) {
-          case 'ADD_TASK':
-            await createTask(householdId, action.title, action.assignee, action.list_id);
+          case 'ADD_TASK': {
+            const parentTask = await createTask(householdId, action.title, action.assignee, action.list_id);
+            if (action.sub_tasks && action.sub_tasks.length > 0) {
+              for (const sub of action.sub_tasks) {
+                await createTask(householdId, sub, action.assignee, action.list_id, parentTask.id);
+              }
+            }
             actionsExecutedCount++;
             break;
+          }
           case 'COMPLETE_TASK':
             if (!action.task_id.startsWith('INFER:')) {
               await completeTask(action.task_id);
@@ -184,6 +190,15 @@ export async function POST(req: Request) {
               actionsExecutedCount++;
             }
             break;
+          case 'REORDER_TASKS': {
+            // Need to import reorderTasks from '@/lib/actions/tasks'
+            const { reorderTasks } = await import('@/lib/actions/tasks');
+            if (action.task_ids && action.task_ids.length > 0) {
+               await reorderTasks(action.task_ids);
+               actionsExecutedCount++;
+            }
+            break;
+          }
           case 'RENAME_HOUSEHOLD':
             if (callerRole !== 'admin') {
               throw new Error('רק מנהלים יכולים לשנות את שם הבית');

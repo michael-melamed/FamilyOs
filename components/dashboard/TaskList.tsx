@@ -2,18 +2,18 @@
 
 /**
  * @file components/dashboard/TaskList.tsx
- * @description_he רשימת משימות — מציגה משימות על וכפתור הוספה
- * @description_en Task list — shows top-level tasks and add button
+ * @description_he רשימת משימות — מציגה משימות ראשיות ותתי משימות, גרירה ושחרור, ומשימות שהושלמו
+ * @description_en Task list — shows top-level tasks with subtasks, drag & drop, and completed tasks
  * @inputs    tasks: Task[], familyId: string, onUpdate: () => void
  * @outputs   JSX task list section
- * @depends_on components/dashboard/TaskItem.tsx, lib/actions/tasks.ts
- * @used_by   components/dashboard/Board.tsx
- * @fix_guide
- *   - Sub-tasks not showing → check tasks filter by parent_id
+ * @depends_on components/dashboard/TaskItem.tsx, lib/actions/tasks.ts, @hello-pangea/dnd
  */
 
+import { useState } from 'react';
 import type { Task } from '@/types';
 import { TaskItem } from './TaskItem';
+import { clearCompletedTasks, reorderTasks } from '@/lib/actions/tasks';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 
 type TaskListProps = {
   listName?: string;
@@ -23,10 +23,54 @@ type TaskListProps = {
   is_locked?: boolean;
   can_add_tasks?: boolean;
   can_delete_tasks?: boolean;
+  listId?: string;
 };
 
-export function TaskList({ listName = 'משימות', tasks, familyId, onUpdate, is_locked = false, can_add_tasks = true, can_delete_tasks = false }: TaskListProps) {
-  const activeTasks = tasks.filter((t) => t.status !== 'done' && !t.parent_id);
+export function TaskList({ listName = 'משימות', tasks, familyId, onUpdate, is_locked = false, can_add_tasks = true, can_delete_tasks = false, listId }: TaskListProps) {
+  const [isClearing, setIsClearing] = useState(false);
+
+  // Filter tasks into top-level and completed
+  const activeTopLevelTasks = tasks.filter((t) => t.status !== 'done' && !t.parent_id).sort((a, b) => a.position - b.position);
+  const doneTopLevelTasks = tasks.filter((t) => t.status === 'done' && !t.parent_id).sort((a, b) => a.position - b.position);
+  
+  // All subtasks (not top level)
+  const allSubtasks = tasks.filter(t => t.parent_id);
+
+  const handleClear = async () => {
+    if (!familyId) return;
+    setIsClearing(true);
+    try {
+      await clearCompletedTasks(familyId, listId);
+      onUpdate();
+    } catch (err) {
+      console.error('Failed clearing tasks natively:', err);
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
+  const handleDragEnd = async (result: DropResult) => {
+    if (!result.destination || is_locked) return;
+    
+    const sourceIndex = result.source.index;
+    const destinationIndex = result.destination.index;
+    
+    if (sourceIndex === destinationIndex) return;
+
+    // Optimistic UI for drag
+    const newActiveList = Array.from(activeTopLevelTasks);
+    const [reorderedItem] = newActiveList.splice(sourceIndex, 1);
+    newActiveList.splice(destinationIndex, 0, reorderedItem);
+
+    // Call server to update positions in background
+    try {
+      const taskIds = newActiveList.map(t => t.id);
+      // Fire and forget - realtime will eventually sync, but we don't await blocking UI
+      reorderTasks(taskIds).then(() => onUpdate());
+    } catch (err) {
+      console.error('Failed to reorder tasks:', err);
+    }
+  };
 
   return (
     <div className="mb-6">
@@ -34,23 +78,79 @@ export function TaskList({ listName = 'משימות', tasks, familyId, onUpdate,
         <h2 className="text-[#1B2A4A] font-bold text-xl flex items-center gap-2">
           <span>📋</span> {listName} {is_locked && <span title="רשימה נעולה">🔒</span>}
         </h2>
+        
+        {doneTopLevelTasks.length > 0 && !is_locked && can_delete_tasks && (
+          <button 
+            onClick={handleClear} 
+            disabled={isClearing}
+            className="text-xs text-[#1A7A4A] font-medium bg-[#E8F5EE] px-3 py-1 rounded-full disabled:opacity-50 transition-colors"
+          >
+            {isClearing ? 'מנקה...' : 'נקה סיום'}
+          </button>
+        )}
       </div>
       
-      {activeTasks.length === 0 ? (
-        <div className="w-full bg-brand-teal/5 rounded-3xl py-12 px-4 text-center border border-brand-teal/10">
-          <div className="flex justify-center mb-5">
-            <svg className="w-14 h-14 text-brand-teal opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-            </svg>
-          </div>
-          <h3 className="text-xl font-bold text-calm-text mb-1">הכל מסודר.</h3>
-          <p className="text-sm text-muted-warm">מה המשימה הבאה?</p>
+      {activeTopLevelTasks.length === 0 && doneTopLevelTasks.length === 0 ? (
+        <div className="w-full bg-brand-teal/[0.02] rounded-xl py-4 px-4 border border-brand-teal/15 text-center">
+          <p className="text-sm font-medium text-calm-text/70">ברשימה זו הכל שקט.</p>
         </div>
       ) : (
         <div className={`bg-white rounded-xl shadow-sm border border-[#C8D4E8] overflow-hidden ${is_locked ? 'opacity-70 pointer-events-none' : ''}`}>
-          {activeTasks.map(task => (
-            <TaskItem key={task.id} task={task} onUpdate={onUpdate} can_delete={can_delete_tasks} />
-          ))}
+          
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <Droppable droppableId={`droppable-${listId || 'main'}`}>
+              {(provided) => (
+                <div {...provided.droppableProps} ref={provided.innerRef}>
+                  {activeTopLevelTasks.map((task, index) => {
+                    const subTasks = allSubtasks.filter(sub => sub.parent_id === task.id).sort((a, b) => a.position - b.position);
+                    return (
+                      <Draggable key={task.id} draggableId={task.id} index={index} isDragDisabled={is_locked}>
+                        {(provided, snapshot) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            style={{
+                              ...provided.draggableProps.style,
+                              opacity: snapshot.isDragging ? 0.8 : 1,
+                            }}
+                            className={snapshot.isDragging ? 'shadow-lg relative z-50 bg-white' : ''}
+                          >
+                            <TaskItem 
+                              task={task} 
+                              subTasks={subTasks}
+                              onUpdate={onUpdate} 
+                              can_delete={can_delete_tasks} 
+                              dragHandleProps={provided.dragHandleProps}
+                            />
+                          </div>
+                        )}
+                      </Draggable>
+                    );
+                  })}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
+
+          {/* Completed Tasks at the bottom */}
+          {doneTopLevelTasks.length > 0 && (
+            <div className="border-t border-dashed border-[#C8D4E8] bg-[#F9FAFB] opacity-60">
+              {doneTopLevelTasks.map(task => {
+                const subTasks = allSubtasks.filter(sub => sub.parent_id === task.id).sort((a, b) => a.position - b.position);
+                return (
+                  <TaskItem 
+                    key={task.id} 
+                    task={task} 
+                    subTasks={subTasks}
+                    onUpdate={onUpdate} 
+                    can_delete={can_delete_tasks} 
+                  />
+                );
+              })}
+            </div>
+          )}
+
         </div>
       )}
     </div>

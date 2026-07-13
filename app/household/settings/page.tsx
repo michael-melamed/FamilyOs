@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { updateHouseholdName } from '@/lib/actions/households';
 import { loadMemory, upsertMemory, deleteMemory } from '@/lib/actions/memory';
-import type { FamilyMemory } from '@/types';
+import { PushSubscriptionManager } from '@/components/dashboard/PushSubscriptionManager';
+import type { FamilyMemory, NotificationPreferences } from '@/types';
 
 type List = { id: string; name: string; is_locked: boolean };
 type Member = { id: string; user_id: string; role: string; joined_at: string; users?: { email: string } };
@@ -23,6 +24,7 @@ export default function HouseholdSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>('');
   const [dissolveConfirm, setDissolveConfirm] = useState('');
+  const [householdId, setHouseholdId] = useState<string>('');
   
   const [lists, setLists] = useState<List[]>([]);
   const [newListName, setNewListName] = useState('');
@@ -49,6 +51,15 @@ export default function HouseholdSettingsPage() {
   const [newMemVal, setNewMemVal] = useState('');
   const [savingMem, setSavingMem] = useState(false);
 
+  // Notifications state
+  const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences>({
+    notify_on_add: true,
+    notify_on_complete: true,
+    detailed_notifications: false,
+    muted_list_ids: []
+  });
+  const [prefsSaved, setPrefsSaved] = useState(false);
+
   const supabase = createClient();
 
   useEffect(() => {
@@ -71,6 +82,7 @@ export default function HouseholdSettingsPage() {
         const admin = membership.role === 'admin';
         setIsAdmin(admin);
         setActiveTab('general'); // Default tab for everyone
+        setHouseholdId(membership.household_id);
 
         // Fetch household name
         const { data: household } = await supabase.from('households').select('name').eq('id', membership.household_id).single();
@@ -85,6 +97,17 @@ export default function HouseholdSettingsPage() {
           const mData = await loadMemory(membership.household_id);
           setMemories(mData);
         } catch (_) {}
+
+        // Fetch user preferences
+        const { data: memberData } = await supabase
+          .from('household_members')
+          .select('notification_preferences')
+          .eq('household_id', membership.household_id)
+          .eq('user_id', session.user.id)
+          .single();
+        if (memberData?.notification_preferences) {
+          setNotificationPrefs(memberData.notification_preferences as NotificationPreferences);
+        }
 
         if (admin) {
           // Fetch members
@@ -250,6 +273,27 @@ export default function HouseholdSettingsPage() {
     setMemories(memories.filter(m => m.key !== key));
   };
 
+  const handlePrefChange = async (key: keyof NotificationPreferences, value: boolean | string[]) => {
+    const newPrefs = { ...notificationPrefs, [key]: value };
+    setNotificationPrefs(newPrefs);
+    
+    const res = await fetch('/api/household/notifications', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ householdId: localStorage.getItem('active_household_id'), preferences: newPrefs })
+    });
+    if (res.ok) {
+      setPrefsSaved(true);
+      setTimeout(() => setPrefsSaved(false), 2000);
+    }
+  };
+
+  const handleToggleMuteList = (listId: string) => {
+    const current = notificationPrefs.muted_list_ids || [];
+    const newMuted = current.includes(listId) ? current.filter(id => id !== listId) : [...current, listId];
+    handlePrefChange('muted_list_ids', newMuted);
+  };
+
   const [activeSection, setActiveSection] = useState<string | null>(null);
 
   if (loading) return <div className="min-h-screen bg-calm-bg flex items-center justify-center">טוען...</div>;
@@ -259,7 +303,7 @@ export default function HouseholdSettingsPage() {
     { id: 'advanced', label: 'ניהול והגדרות' },
   ] : [
     { id: 'general', label: 'כללי' },
-    { id: 'advanced', label: 'זיכרון הסוכן' },
+    { id: 'advanced', label: 'הגדרות אישיות' },
   ];
 
   const renderAccordion = (sectionId: string, sectionTitle: string, sectionIcon: string, content: React.ReactNode) => {
@@ -412,6 +456,55 @@ export default function HouseholdSettingsPage() {
           {activeTab === 'advanced' && (
             <div className="space-y-3">
               
+              {/* Accordion: Notifications (Everyone) */}
+              {renderAccordion('notifications', 'התראות שלי', '🔔', (
+                <div className="space-y-4 relative">
+                  {prefsSaved && <div className="absolute top-0 left-0 bg-brand-teal text-white text-xs px-2 py-1 rounded-lg animate-pulse">נשמר ✓</div>}
+                  
+                  {/* Web Push Subscription Component */}
+                  <div className="mb-6">
+                    {householdId && <PushSubscriptionManager householdId={householdId} />}
+                  </div>
+                  
+                  <div className="space-y-3">
+                    {[
+                      { key: 'notify_on_add', label: 'התראות על משימות ופריטים חדשים' },
+                      { key: 'notify_on_complete', label: 'התראות על השלמת משימות/קניות' },
+                    ].map((p) => (
+                      <label key={p.key} className="flex items-center justify-between p-4 bg-white rounded-xl border border-neutral-100 shadow-sm cursor-pointer hover:bg-neutral-50 transition-colors">
+                        <span className="font-medium text-calm-text text-sm">{p.label}</span>
+                        <input 
+                          type="checkbox" 
+                          checked={notificationPrefs[p.key as keyof NotificationPreferences] as boolean} 
+                          onChange={(e) => handlePrefChange(p.key as keyof NotificationPreferences, e.target.checked)} 
+                          className="w-5 h-5 accent-brand-teal" 
+                        />
+                      </label>
+                    ))}
+                  </div>
+
+                  {lists.length > 0 && (
+                    <div className="mt-6">
+                      <h4 className="text-xs font-bold text-muted-warm uppercase mb-3">השתקת רשימות</h4>
+                      <p className="text-xs text-calm-text/70 mb-3">בחר רשימות שאתה לא רוצה לקבל מהן אף התראה:</p>
+                      <div className="space-y-2">
+                        {lists.map(list => (
+                          <label key={list.id} className="flex items-center justify-between p-3 bg-white rounded-xl border border-neutral-100 shadow-sm cursor-pointer hover:bg-neutral-50 transition-colors">
+                            <span className="text-sm text-calm-text font-medium">{list.name}</span>
+                            <input 
+                              type="checkbox" 
+                              checked={notificationPrefs.muted_list_ids?.includes(list.id)} 
+                              onChange={() => handleToggleMuteList(list.id)} 
+                              className="w-4 h-4 accent-brand-purple" 
+                            />
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+
               {/* Accordion: Lists (Admin Only) */}
               {isAdmin && renderAccordion('lists', 'ניהול רשימות', '📋', (
                 <div className="space-y-4">

@@ -37,12 +37,21 @@ export type Household = {
   created_at: string;
 };
 
+export type NotificationPreferences = {
+  notify_on_add: boolean;
+  notify_on_complete: boolean;
+  detailed_notifications: boolean;
+  muted_list_ids: string[];
+};
+
 export type HouseholdMember = {
   id: string;
   household_id: string;
   user_id: string;
   role: MemberRole;
   joined_at: string;
+  notification_preferences?: NotificationPreferences;
+  cleared_history_at?: string;
 };
 
 export type HouseholdPermissions = {
@@ -133,5 +142,19 @@ export type FamilyMemory = {
 export type ApiResponse<T = unknown> = {
   data?: T;
   error?: string;
+};
+
+// ─── Activity Logs ────────────────────────────────────────────────────────────
+
+export type ActivityLog = {
+  id: string;
+  household_id: string;
+  actor_id: string | null;
+  actor_name: string;
+  action: 'INSERT' | 'UPDATE' | 'DELETE';
+  entity_type: 'task' | 'shopping_item' | 'list';
+  entity_title: string;
+  details: any;
+  created_at: string;
 };
 

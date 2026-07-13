@@ -56,3 +56,47 @@ self.addEventListener('fetch', (e) => {
     fetch(e.request).catch(() => caches.match(e.request))
   );
 });
+
+// Push event — receive push notification
+self.addEventListener('push', function(e) {
+  if (!e.data) return;
+
+  const data = e.data.json();
+  const options = {
+    body: data.body,
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+    vibrate: [100, 50, 100],
+    data: {
+      url: data.url || '/dashboard'
+    }
+  };
+
+  e.waitUntil(
+    self.registration.showNotification(data.title || 'FamilyOS', options)
+  );
+});
+
+// Notification click event — handle clicking the notification
+self.addEventListener('notificationclick', function(e) {
+  e.notification.close();
+  
+  const urlToOpen = e.notification.data.url;
+
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // Check if there is already a window/tab open with the target URL
+      for (let i = 0; i < windowClients.length; i++) {
+        const client = windowClients[i];
+        // If so, just focus it.
+        if (client.url.includes(urlToOpen) && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // If not, then open the target URL in a new window/tab.
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    })
+  );
+});

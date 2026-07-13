@@ -133,6 +133,8 @@ export default function DashboardPage() {
         userName={userName}
         userAvatar={userAvatar}
         householdName={householdName}
+        householdId={householdId ?? ''}
+        currentUserId={currentUserId}
         onSignOut={handleSignOut}
       />
 
