@@ -112,7 +112,8 @@ export type ShoppingItem = {
   /** Uses family_id column (legacy) — same UUID value as household_id */
   family_id: string;
   name: string;
-  quantity?: string;
+  quantity: string | null;
+  category: string | null;
   checked: boolean;
   created_by?: string;
   created_at: string;

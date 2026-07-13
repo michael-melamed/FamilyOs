@@ -38,7 +38,7 @@ Return this exact shape:
 Action types:
 { "type": "COMPLETE_TASK",  "task_id": "INFER:[title]" }
 { "type": "ADD_TASK",       "title": "...", "assignee": "...", "list_id": "<list UUID or null>", "sub_tasks": ["sub1", "sub2"] }
-{ "type": "ADD_SHOPPING",   "item": "...",  "quantity": "..." }
+{ "type": "ADD_SHOPPING",   "item": "...",  "quantity": "...", "category": "..." }
 { "type": "UPDATE_TASK",    "task_id": "INFER:[title]", "changes": { "status": "in_progress" } }
 { "type": "UPDATE_MEMORY",  "key": "...", "value": "...", "category": "general|member|preference|routine" }
 { "type": "DELETE_TASK",    "task_id": "INFER:[title]" }
@@ -70,6 +70,7 @@ Rules:
 17. For shopping list: commands like "תמחק/תנקה את המסומנים בקניות" MUST map to CLEAR_LIST with list_id set to "INFER:קניות".
 18. For complex tasks (e.g. "מוצרים לחריימה", "איך לארגן יום הולדת"): create a single ADD_TASK with the main title, and use the "sub_tasks" array to list the components. Limit to max 5 sub-tasks.
 19. "תעביר את X לראש הרשימה/למטה" -> REORDER_TASKS with the new ordered list of task titles (INFER).
+20. For ADD_SHOPPING: if the user mentions a specific recipe or group (e.g. "מצרכים לעוגה", "ירקות"), set the "category" to that group name. If no group is implied, set category to null.
 `;
 
 export async function parsePrompt(

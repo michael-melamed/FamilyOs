@@ -71,26 +71,44 @@ export function ShoppingList({ items, familyId, onUpdate, is_locked = false, can
           <p className="text-sm font-medium text-calm-text/70">בעגלה זו הכל שקט.</p>
         </div>
       ) : (
-        <div className={`flex flex-col ${is_locked ? 'opacity-70 pointer-events-none' : ''}`}>
-          {items.map(item => (
-            <div 
-              key={item.id} 
-              className="w-full bg-white rounded-2xl shadow-sm border border-neutral-100 p-4 mb-3 flex items-center gap-4 cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => handleToggle(item)}
-            >
-              <button 
-                className={`w-7 h-7 shrink-0 rounded-xl border-2 flex items-center justify-center transition-colors ${item.checked ? 'bg-brand-teal border-brand-teal text-white' : 'border-neutral-200 text-transparent hover:border-brand-teal'}`}
-                aria-label="החלף פריט קניות"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
-              </button>
-              <div className={`flex-1 font-medium transition-all flex items-center justify-between ${item.checked ? 'opacity-60' : ''}`}>
-                <span className={`text-calm-text ${item.checked ? 'line-through text-muted-warm' : ''}`}>{item.name}</span>
-                {item.quantity && (
-                  <span className={`text-xs px-2 py-0.5 rounded-full border ${item.checked ? 'border-neutral-300 text-muted-warm' : 'bg-calm-bg border-neutral-200 text-muted-warm'}`}>
-                    ({item.quantity})
-                  </span>
-                )}
+        <div className={`flex flex-col gap-4 ${is_locked ? 'opacity-70 pointer-events-none' : ''}`}>
+          {Object.entries(
+            items.reduce((acc, item) => {
+              const cat = item.category || 'כללי';
+              if (!acc[cat]) acc[cat] = [];
+              acc[cat].push(item);
+              return acc;
+            }, {} as Record<string, ShoppingItem[]>)
+          ).map(([category, catItems]) => (
+            <div key={category} className="bg-white rounded-2xl shadow-sm border border-neutral-100 overflow-hidden">
+              {category !== 'כללי' && (
+                <div className="bg-neutral-50 border-b border-neutral-100 px-4 py-2 font-bold text-brand-purple text-sm">
+                  {category}
+                </div>
+              )}
+              <div className="flex flex-col">
+                {catItems.map((item, index) => (
+                  <div 
+                    key={item.id} 
+                    className={`w-full p-4 flex items-center gap-4 cursor-pointer hover:bg-neutral-50 transition-colors ${index !== catItems.length - 1 ? 'border-b border-neutral-50' : ''}`}
+                    onClick={() => handleToggle(item)}
+                  >
+                    <button 
+                      className={`w-7 h-7 shrink-0 rounded-xl border-2 flex items-center justify-center transition-colors ${item.checked ? 'bg-brand-teal border-brand-teal text-white' : 'border-neutral-200 text-transparent hover:border-brand-teal'}`}
+                      aria-label="החלף פריט קניות"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
+                    </button>
+                    <div className={`flex-1 font-medium transition-all flex items-center justify-between ${item.checked ? 'opacity-60' : ''}`}>
+                      <span className={`text-calm-text ${item.checked ? 'line-through text-muted-warm' : ''}`}>{item.name}</span>
+                      {item.quantity && (
+                        <span className={`text-xs px-2 py-0.5 rounded-full border ${item.checked ? 'border-neutral-300 text-muted-warm' : 'bg-calm-bg border-neutral-200 text-muted-warm'}`}>
+                          ({item.quantity})
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           ))}

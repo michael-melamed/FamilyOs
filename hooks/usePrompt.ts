@@ -72,12 +72,8 @@ export function usePrompt(familyId: string | undefined, onSuccess: (summary: str
       }
 
       // Route === 'AI'
-      // 1. Instantly render raw task (create in DB to trigger Realtime)
-      const rawTask = await createTask(familyId, rawPrompt);
-      const taskId = rawTask.id;
-      
-      // Notify the system that this task is processing AI (for Optimistic UI loader)
-      window.dispatchEvent(new CustomEvent('ai-start', { detail: taskId }));
+      // Dispatch ai-processing-start to UI with the prompt text
+      window.dispatchEvent(new CustomEvent('ai-processing-start', { detail: rawPrompt }));
 
       abortControllerRef.current = new AbortController();
 
@@ -96,9 +92,7 @@ export function usePrompt(familyId: string | undefined, onSuccess: (summary: str
         throw new Error(data.error || 'Failed to communicate with agent');
       }
 
-      // 4. Once AI responds successfully, delete the raw task (AI created enriched items)
-      await deleteTask(taskId);
-      window.dispatchEvent(new CustomEvent('ai-stop', { detail: taskId }));
+      window.dispatchEvent(new CustomEvent('ai-processing-stop'));
 
       if (data.summary) {
         onSuccess(data.summary);

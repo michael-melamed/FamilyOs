@@ -116,7 +116,7 @@ export async function POST(req: Request) {
             }
             break;
           case 'ADD_SHOPPING':
-            await addShoppingItem(householdId, action.item, action.quantity);
+            await addShoppingItem(householdId, action.item, action.quantity, action.category);
             actionsExecutedCount++;
             break;
           case 'UPDATE_TASK':

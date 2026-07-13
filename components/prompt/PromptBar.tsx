@@ -25,6 +25,28 @@ type PromptBarProps = {
 export function PromptBar({ familyId, onAgentResponse }: PromptBarProps) {
   const { prompt, setPrompt, submit, isLoading, error } = usePrompt(familyId, onAgentResponse);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [processingPrompt, setProcessingPrompt] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleStart = (e: any) => setProcessingPrompt(e.detail);
+    const handleStop = () => setProcessingPrompt(null);
+    const handleClear = () => setProcessingPrompt(null);
+
+    window.addEventListener('ai-processing-start', handleStart);
+    window.addEventListener('ai-processing-stop', handleStop);
+    window.addEventListener('ai-clear-all', handleClear);
+
+    return () => {
+      window.removeEventListener('ai-processing-start', handleStart);
+      window.removeEventListener('ai-processing-stop', handleStop);
+      window.removeEventListener('ai-clear-all', handleClear);
+    };
+  }, []);
+
+  const handleAbort = () => {
+    window.dispatchEvent(new CustomEvent('ai-abort'));
+    setProcessingPrompt(null);
+  };
 
   // We explicitly fire native keyboard bindings for Enter bounds automatically resolving cleanly
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -38,8 +60,27 @@ export function PromptBar({ familyId, onAgentResponse }: PromptBarProps) {
     <div className="fixed bottom-0 left-0 right-0 max-w-3xl mx-auto w-full z-50">
       <div className="relative bottom-4 mx-4">
         {error && (
-          <div className="absolute -top-12 left-0 right-0 bg-red-100 text-red-600 text-sm p-2 rounded shadow text-center truncate">
+          <div className="absolute -top-12 left-0 right-0 bg-red-100 text-red-600 text-sm p-2 rounded shadow text-center truncate z-40">
             {error}
+          </div>
+        )}
+
+        {processingPrompt && (
+          <div className="absolute -top-16 left-4 right-4 sm:left-auto sm:right-0 sm:w-80 bg-white border border-brand-purple/30 shadow-lg rounded-2xl p-3 flex items-center justify-between gap-3 animate-in slide-in-from-bottom-4 fade-in duration-200 z-40">
+            <div className="flex items-center gap-3 overflow-hidden">
+              <div className="w-8 h-8 shrink-0 rounded-full bg-brand-purple/10 flex items-center justify-center">
+                <span className="animate-spin block border-2 border-brand-purple border-t-transparent rounded-full w-5 h-5"></span>
+              </div>
+              <p className="text-sm font-medium text-calm-text truncate" dir="rtl">
+                {processingPrompt}
+              </p>
+            </div>
+            <button
+              onClick={handleAbort}
+              className="text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded-full border border-red-200 hover:bg-red-100 font-medium whitespace-nowrap transition-colors"
+            >
+              עצור
+            </button>
           </div>
         )}
         

@@ -15,7 +15,7 @@
 import { createClient } from '@/lib/supabase/server';
 import type { ShoppingItem } from '@/types';
 
-export async function addShoppingItem(familyId: string, name: string, quantity?: string): Promise<ShoppingItem> {
+export async function addShoppingItem(familyId: string, name: string, quantity?: string, category?: string): Promise<ShoppingItem> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from('shopping_items')
@@ -23,6 +23,7 @@ export async function addShoppingItem(familyId: string, name: string, quantity?:
       family_id: familyId,
       name,
       quantity: quantity || null,
+      category: category || null
     })
     .select()
     .single();
