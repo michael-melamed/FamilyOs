@@ -16,7 +16,7 @@ type SidebarProps = {
   onClose: () => void;
   householdId: string | undefined;
   tasks: Task[] | undefined;
-  onSwitchHousehold?: (id: string) => void;
+  onSwitchHousehold?: (id: string, name?: string) => void;
 };
 
 export function Sidebar({ isOpen, onClose, householdId, tasks = [], onSwitchHousehold }: SidebarProps) {
@@ -76,7 +76,7 @@ export function Sidebar({ isOpen, onClose, householdId, tasks = [], onSwitchHous
       if (!res.ok) throw new Error(data.error || 'שגיאה בהצטרפות');
       
       if (onSwitchHousehold) {
-        onSwitchHousehold(data.household_id);
+        onSwitchHousehold(data.household_id, newHouseholdName.trim());
       }
       setActivePanel(null);
       setManualCode('');
@@ -119,7 +119,7 @@ export function Sidebar({ isOpen, onClose, householdId, tasks = [], onSwitchHous
       }
 
       if (onSwitchHousehold) {
-        onSwitchHousehold(data.household_id);
+        onSwitchHousehold(data.household_id, hName);
       }
       setActivePanel(null);
       setNewHouseholdName('');
@@ -209,7 +209,7 @@ export function Sidebar({ isOpen, onClose, householdId, tasks = [], onSwitchHous
             {userHouseholds.map(h => (
               <div 
                 key={h.id}
-                onClick={() => onSwitchHousehold?.(h.id)}
+                onClick={() => onSwitchHousehold?.(h.id, h.name)}
                 className={`group px-3 py-2.5 rounded-xl cursor-pointer transition-colors flex items-center justify-between ${
                   h.id === householdId 
                     ? 'bg-brand-teal/10 text-brand-teal' 

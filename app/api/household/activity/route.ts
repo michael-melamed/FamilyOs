@@ -60,7 +60,10 @@ export async function GET(req: Request) {
         try {
           const { data: { user } } = await supabaseAdmin.auth.admin.getUserById(log.actor_id);
           if (user?.user_metadata) {
-            log.actor_name = user.user_metadata.full_name || user.user_metadata.name || log.actor_name;
+            const fullName = user.user_metadata.full_name || user.user_metadata.name;
+            if (fullName) {
+              log.actor_name = fullName.split(' ')[0]; // use first name only
+            }
           }
         } catch (e) {
           // ignore
