@@ -58,11 +58,14 @@ export function usePrompt(familyId: string | undefined, onSuccess: (summary: str
     try {
       if (evaluation.route === 'DB') {
         // Direct DB insert without AI Latency
+        const finalPrompt = evaluation.cleanText || rawPrompt;
+        const assignee = evaluation.assignee;
+        
         if (evaluation.intent === 'Add Shopping Item') {
-          const { addShoppingItem } = await import('@/lib/actions/shopping');
-          await addShoppingItem(familyId, rawPrompt);
+          const { createShoppingItem } = await import('@/lib/actions/shopping');
+          await createShoppingItem(familyId, finalPrompt);
         } else {
-          await createTask(familyId, rawPrompt);
+          await createTask(familyId, finalPrompt, assignee);
         }
         setIsLoading(false);
         return;
