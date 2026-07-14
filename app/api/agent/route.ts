@@ -70,29 +70,37 @@ export async function POST(req: Request) {
     const _assignee = body._assignee as string | undefined;
 
     // Fast path: skip Claude entirely when client already evaluated the intent.
-    // We use adminSupabase (service role) here to bypass the PostgREST RLS CTE
-    // which causes "DEFAULT is not allowed in this context" on plain user clients.
-    // Security is enforced above via session + membership validation.
+    // We use adminSupabase (service role) AND supply ALL columns explicitly,
+    // so PostgREST CTE never needs to resolve DEFAULT for any column.
+    // This definitively fixes "DEFAULT is not allowed in this context".
+    // Security: auth + membership validated above.
     if (_dbHint === 'ADD_TASK' || _dbHint === 'ADD_SHOPPING') {
+      const now = new Date().toISOString();
       if (_dbHint === 'ADD_SHOPPING') {
         const { error } = await adminSupabase.from('shopping_items').insert({
+          id: crypto.randomUUID(),
           family_id: householdId,
           name: prompt,
           quantity: null,
-          category: null,
+          checked: false,
           created_by: session.user.id,
+          created_at: now,
         });
         if (error) throw new Error(error.message);
       } else {
         const { error } = await adminSupabase.from('tasks').insert({
+          id: crypto.randomUUID(),
           family_id: householdId,
           household_id: householdId,
           title: prompt,
+          status: 'pending',
           assignee: _assignee || null,
           list_id: null,
           parent_id: null,
           position: Math.floor(Date.now() / 1000),
           created_by: session.user.id,
+          created_at: now,
+          updated_at: now,
         });
         if (error) throw new Error(error.message);
       }
