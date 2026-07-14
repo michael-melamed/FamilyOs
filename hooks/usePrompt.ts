@@ -17,7 +17,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { evaluateTask } from '@/lib/agent/router';
 
-export function usePrompt(familyId: string | undefined, onSuccess: (summary: string) => void) {
+export function usePrompt(familyId: string | undefined, isAiMode: boolean, onSuccess: (summary: string) => void) {
   const [prompt, setPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +31,6 @@ export function usePrompt(familyId: string | undefined, onSuccess: (summary: str
         abortControllerRef.current.abort();
         abortControllerRef.current = null;
         setIsLoading(false);
-        // The raw task is kept in the DB as requested
         onSuccess('פעולת ה-AI בוטלה. המשימה נשמרה כרגיל.');
       }
     };
@@ -39,15 +38,8 @@ export function usePrompt(familyId: string | undefined, onSuccess: (summary: str
     return () => window.removeEventListener('ai-abort', handleAbort);
   }, [onSuccess]);
 
-  const submit = async () => {
+  const submit = async (overrideType?: 'task' | 'shopping') => {
     if (!prompt.trim() || !familyId) return;
-
-    const evaluation = evaluateTask(prompt);
-
-    if (evaluation.route === 'BLOCK') {
-      setError('FamilyOS מיועד למשימות משפחתיות בלבד.');
-      return;
-    }
 
     setIsLoading(true);
     setError(null);
@@ -55,12 +47,37 @@ export function usePrompt(familyId: string | undefined, onSuccess: (summary: str
     setPrompt('');
 
     try {
+      // DUMB MODE: Bypass agent completely, tell API to do direct insert
+      if (!isAiMode) {
+        const res = await fetch('/api/agent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: rawPrompt,
+            familyId,
+            _dbHint: overrideType === 'shopping' ? 'ADD_SHOPPING' : 'ADD_TASK',
+          }),
+        });
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}));
+          throw new Error(d.error || 'שגיאה בשמירה');
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      // AI MODE: Smart routing
+      const evaluation = evaluateTask(rawPrompt);
+
+      if (evaluation.route === 'BLOCK') {
+        setError('FamilyOS מיועד למשימות משפחתיות בלבד.');
+        setIsLoading(false);
+        return;
+      }
 
       if (evaluation.route === 'DB') {
-        // Even for simple DB inserts, go through /api/agent so we never call
-        // 'use server' functions directly from a Client Component (causes 500).
         const finalPrompt = evaluation.cleanText || rawPrompt;
-        const intent = evaluation.intent; // 'Add Shopping Item' | 'Add Task'
+        const intent = evaluation.intent; 
         const assignee = evaluation.assignee;
 
         const res = await fetch('/api/agent', {

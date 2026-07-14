@@ -2,16 +2,11 @@
 
 /**
  * @file components/prompt/PromptBar.tsx
- * @description_he שורת קלט חופשי קבועה בתחתית — לב האינטראקציה עם הסוכן
- * @description_en Fixed free-text input bar at bottom — the heart of agent interaction
+ * @description_he שורת קלט עם מתג AI - מוסיפה משימות/קניות ישירות או שולחת לסוכן
+ * @description_en Input bar with AI toggle - adds tasks/shopping directly or sends to agent
  * @inputs    familyId: string, onAgentResponse: (summary: string) => void
  * @outputs   JSX input bar
  * @depends_on hooks/usePrompt.ts
- * @used_by   app/dashboard/page.tsx
- * @fix_guide
- *   - Bar covered by mobile keyboard → add padding-bottom to board equal to bar height
- *   - Submit button not working → check usePrompt handles Enter key and button click
- *   - Hebrew text direction wrong → add dir="rtl" to the input element itself
  */
 
 import { useState, useRef, useEffect } from 'react';
@@ -23,7 +18,8 @@ type PromptBarProps = {
 };
 
 export function PromptBar({ familyId, onAgentResponse }: PromptBarProps) {
-  const { prompt, setPrompt, submit, isLoading, error } = usePrompt(familyId, onAgentResponse);
+  const [isAiMode, setIsAiMode] = useState(false);
+  const { prompt, setPrompt, submit, isLoading, error } = usePrompt(familyId, isAiMode, onAgentResponse);
   const inputRef = useRef<HTMLInputElement>(null);
   const [processingPrompt, setProcessingPrompt] = useState<string | null>(null);
 
@@ -48,17 +44,17 @@ export function PromptBar({ familyId, onAgentResponse }: PromptBarProps) {
     setProcessingPrompt(null);
   };
 
-  // We explicitly fire native keyboard bindings for Enter bounds automatically resolving cleanly
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      submit();
+      // Default to task if Enter is pressed in Dumb Mode
+      submit(isAiMode ? undefined : 'task');
     }
   };
 
   return (
     <div className="fixed bottom-0 left-0 right-0 max-w-3xl mx-auto w-full z-50">
-      <div className="relative bottom-4 mx-4">
+      <div className="relative bottom-4 mx-4 flex flex-col gap-2">
         {error && (
           <div className="absolute -top-12 left-0 right-0 bg-red-100 text-red-600 text-sm p-2 rounded shadow text-center truncate z-40">
             {error}
@@ -83,23 +79,24 @@ export function PromptBar({ familyId, onAgentResponse }: PromptBarProps) {
             </button>
           </div>
         )}
-        
-        <div className="bg-brand-gradient p-[1px] rounded-full shadow-lg transition-shadow focus-within:shadow-xl">
-          <div className="flex items-center bg-white rounded-full h-14 p-1 pl-2">
-            <button 
-              type="button"
-              onClick={submit}
-              disabled={isLoading || !prompt.trim() || !familyId}
-              className="w-11 h-11 shrink-0 bg-brand-purple hover:opacity-90 text-white rounded-full flex justify-center items-center cursor-pointer transition-opacity disabled:opacity-50 disabled:bg-gray-300 rotate-180"
-              aria-label="שלח פקודה"
-            >
-              {isLoading ? (
-                <span className="animate-spin text-sm block border-2 border-t-white border-white/30 rounded-full w-5 h-5"></span>
-              ) : (
-                <span className="text-lg leading-none transform -translate-x-[1px]">➤</span>
-              )}
-            </button>
+
+        <div className={`transition-all duration-300 rounded-full p-[2px] shadow-lg focus-within:shadow-xl ${isAiMode ? 'bg-brand-gradient shadow-brand-purple/20' : 'bg-gray-200'}`}>
+          <div className="flex items-center bg-white rounded-full h-14 p-1 pl-2 pr-2 gap-2">
             
+            {/* AI Toggle Button */}
+            <button
+              type="button"
+              onClick={() => setIsAiMode(!isAiMode)}
+              className={`shrink-0 w-11 h-11 rounded-full flex items-center justify-center transition-all duration-300 text-lg ${
+                isAiMode 
+                  ? 'bg-gradient-to-tr from-brand-purple to-pink-500 text-white shadow-md' 
+                  : 'bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-brand-purple'
+              }`}
+              title="מצב AI"
+            >
+              ✨
+            </button>
+
             <input
               ref={inputRef}
               type="text"
@@ -108,9 +105,48 @@ export function PromptBar({ familyId, onAgentResponse }: PromptBarProps) {
               onChange={(e) => setPrompt(e.target.value)}
               onKeyDown={handleKeyDown}
               disabled={isLoading}
-              placeholder={isLoading ? "מעבד בקשה..." : "מה קרה? מה צריך לעשות?..."}
-              className="flex-1 h-full bg-transparent border-none outline-none text-calm-text mr-4 placeholder:text-calm-text/40 text-base font-medium"
+              placeholder={isLoading ? "מעבד בקשה..." : isAiMode ? "מה בא לך לעשות?..." : "הוסף משימה או פריט..."}
+              className="flex-1 h-full bg-transparent border-none outline-none text-calm-text placeholder:text-calm-text/40 text-base font-medium min-w-0"
             />
+
+            {/* Action Buttons */}
+            {isAiMode ? (
+              <button 
+                type="button"
+                onClick={() => submit()}
+                disabled={isLoading || !prompt.trim() || !familyId}
+                className="w-11 h-11 shrink-0 bg-brand-purple hover:opacity-90 text-white rounded-full flex justify-center items-center cursor-pointer transition-opacity disabled:opacity-50 disabled:bg-gray-300 rotate-180"
+                aria-label="שלח לסוכן"
+              >
+                {isLoading ? (
+                  <span className="animate-spin text-sm block border-2 border-t-white border-white/30 rounded-full w-5 h-5"></span>
+                ) : (
+                  <span className="text-lg leading-none transform -translate-x-[1px]">➤</span>
+                )}
+              </button>
+            ) : (
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => submit('task')}
+                  disabled={isLoading || !prompt.trim() || !familyId}
+                  className="h-10 px-3 shrink-0 bg-brand-purple/10 text-brand-purple font-medium hover:bg-brand-purple hover:text-white rounded-full flex justify-center items-center cursor-pointer transition-colors disabled:opacity-50 text-sm"
+                  aria-label="הוסף למשימות"
+                >
+                  למשימות
+                </button>
+                <button
+                  type="button"
+                  onClick={() => submit('shopping')}
+                  disabled={isLoading || !prompt.trim() || !familyId}
+                  className="h-10 px-3 shrink-0 bg-green-50 text-green-600 font-medium hover:bg-green-500 hover:text-white rounded-full flex justify-center items-center cursor-pointer transition-colors disabled:opacity-50 text-sm"
+                  aria-label="הוסף לקניות"
+                >
+                  לקניות
+                </button>
+              </div>
+            )}
+            
           </div>
         </div>
       </div>
