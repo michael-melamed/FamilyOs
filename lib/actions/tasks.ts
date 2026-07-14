@@ -32,7 +32,7 @@ export async function createTask(familyId: string, title: string, assignee?: str
     .single();
 
   if (error) throw new Error(error.message);
-  return data;
+  return data as unknown as Task;
 }
 
 export async function updateTask(taskId: string, changes: Partial<Task>): Promise<Task> {

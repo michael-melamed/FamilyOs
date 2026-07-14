@@ -27,7 +27,7 @@ export async function addShoppingItem(familyId: string, name: string, quantity?:
     .single();
 
   if (error) throw new Error(error.message);
-  return data;
+  return data as unknown as ShoppingItem;
 }
 
 export async function toggleShoppingItem(itemId: string, checked: boolean): Promise<ShoppingItem> {
