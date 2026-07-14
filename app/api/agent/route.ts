@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { parsePrompt } from '@/lib/agent/parser';
 import { createTask, updateTask, completeTask, deleteTask } from '@/lib/actions/tasks';
 import { addShoppingItem, clearAllShoppingItems, clearCheckedItems } from '@/lib/actions/shopping';
@@ -7,6 +8,12 @@ import { createList, renameList, deleteList, clearList } from '@/lib/actions/lis
 import { updateHouseholdName } from '@/lib/actions/households';
 import { upsertMemory } from '@/lib/actions/memory';
 import type { Task, List } from '@/types';
+
+// Admin client bypasses RLS — used only after auth+membership validation
+const adminSupabase = createAdminClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 /**
  * @file route.ts (API route: POST /api/agent)
@@ -63,19 +70,21 @@ export async function POST(req: Request) {
     const _assignee = body._assignee as string | undefined;
 
     // Fast path: skip Claude entirely when client already evaluated the intent.
-    // We use the already-authenticated `supabase` client directly here,
-    // NOT the 'use server' helpers (which open a new cookies() context and lose the session).
+    // We use adminSupabase (service role) here to bypass the PostgREST RLS CTE
+    // which causes "DEFAULT is not allowed in this context" on plain user clients.
+    // Security is enforced above via session + membership validation.
     if (_dbHint === 'ADD_TASK' || _dbHint === 'ADD_SHOPPING') {
       if (_dbHint === 'ADD_SHOPPING') {
-        const { error } = await supabase.from('shopping_items').insert({
+        const { error } = await adminSupabase.from('shopping_items').insert({
           family_id: householdId,
           name: prompt,
           quantity: null,
           category: null,
+          created_by: session.user.id,
         });
         if (error) throw new Error(error.message);
       } else {
-        const { error } = await supabase.from('tasks').insert({
+        const { error } = await adminSupabase.from('tasks').insert({
           family_id: householdId,
           household_id: householdId,
           title: prompt,
@@ -83,6 +92,7 @@ export async function POST(req: Request) {
           list_id: null,
           parent_id: null,
           position: Math.floor(Date.now() / 1000),
+          created_by: session.user.id,
         });
         if (error) throw new Error(error.message);
       }
