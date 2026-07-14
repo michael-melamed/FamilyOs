@@ -21,37 +21,21 @@ import type { Task, TaskStatus } from '@/types';
 
 export async function createTask(familyId: string, title: string, assignee?: string, list_id?: string, parent_id?: string): Promise<Task> {
   const supabase = createClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  
-  const now = new Date().toISOString();
-  const payload = {
-    id: crypto.randomUUID(),
-    family_id: familyId,
-    household_id: familyId,
-    title,
-    status: 'pending',
-    assignee: assignee || null,
-    parent_id: parent_id || null,
-    list_id: list_id || null,
-    position: Math.floor(Date.now() / 1000),
-    created_by: session?.user?.id || null,
-    created_at: now,
-    updated_at: now
-  };
-
-  console.log("SENDING FULL TASK PAYLOAD TO DB (BYPASSING POSTGREST BUG):", payload);
-
   const { data, error } = await supabase
-    .from('tasks')
-    .insert(payload)
-    .select()
+    .rpc('rpc_add_task', {
+      p_household_id: familyId,
+      p_title: title,
+      p_assignee: assignee || null,
+      p_list_id: list_id || null,
+      p_parent_id: parent_id || null
+    })
     .single();
 
   if (error) {
-    console.error("SUPABASE INSERT ERROR:", error);
+    console.error("SUPABASE RPC ERROR:", error);
     throw new Error(error.message);
   }
-  return data;
+  return data as unknown as Task;
 }
 
 export async function updateTask(taskId: string, changes: Partial<Task>): Promise<Task> {
