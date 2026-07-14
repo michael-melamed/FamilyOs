@@ -62,12 +62,29 @@ export async function POST(req: Request) {
     const _dbHint = body._dbHint as string | undefined;
     const _assignee = body._assignee as string | undefined;
 
-    // Fast path: skip Claude entirely when client already evaluated the intent
+    // Fast path: skip Claude entirely when client already evaluated the intent.
+    // We use the already-authenticated `supabase` client directly here,
+    // NOT the 'use server' helpers (which open a new cookies() context and lose the session).
     if (_dbHint === 'ADD_TASK' || _dbHint === 'ADD_SHOPPING') {
       if (_dbHint === 'ADD_SHOPPING') {
-        await addShoppingItem(householdId, prompt, undefined, undefined);
+        const { error } = await supabase.from('shopping_items').insert({
+          family_id: householdId,
+          name: prompt,
+          quantity: null,
+          category: null,
+        });
+        if (error) throw new Error(error.message);
       } else {
-        await createTask(householdId, prompt, _assignee);
+        const { error } = await supabase.from('tasks').insert({
+          family_id: householdId,
+          household_id: householdId,
+          title: prompt,
+          assignee: _assignee || null,
+          list_id: null,
+          parent_id: null,
+          position: Math.floor(Date.now() / 1000),
+        });
+        if (error) throw new Error(error.message);
       }
       return NextResponse.json({ actions: [], summary: '', actionsExecuted: 1 });
     }
