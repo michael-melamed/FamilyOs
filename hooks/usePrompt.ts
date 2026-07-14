@@ -134,9 +134,11 @@ export function usePrompt(familyId: string | undefined, isAiMode: boolean, onSuc
     } catch (err: any) {
       if (err.name === 'AbortError') {
         console.log('AI fetch aborted by user');
+        setPrompt(rawPrompt);
       } else {
         console.error('Agent error:', err);
         setError(err.message || 'Error communicating with Agent');
+        setPrompt(rawPrompt);
       }
       setIsLoading(false);
     } finally {

@@ -76,24 +76,19 @@ export async function POST(req: Request) {
     // Security: auth + membership validated above.
     if (_dbHint === 'ADD_TASK' || _dbHint === 'ADD_SHOPPING') {
       if (_dbHint === 'ADD_SHOPPING') {
-        const payload: any = {
-          family_id: householdId,
-          name: prompt,
-          created_by: session.user.id
-        };
-        const { error } = await adminSupabase.from('shopping_items').insert(payload);
+        const { error } = await adminSupabase.rpc('rpc_add_shopping_item', {
+          p_family_id: householdId,
+          p_name: prompt,
+          p_created_by: session.user.id
+        });
         if (error) throw new Error(error.message);
       } else {
-        const payload: any = {
-          family_id: householdId,
-          household_id: householdId,
-          title: prompt,
-          created_by: session.user.id,
-          position: Math.floor(Date.now() / 1000)
-        };
-        if (_assignee) payload.assignee = _assignee;
-
-        const { error } = await adminSupabase.from('tasks').insert(payload);
+        const { error } = await adminSupabase.rpc('rpc_add_task', {
+          p_household_id: householdId,
+          p_title: prompt,
+          p_assignee: _assignee || null,
+          p_created_by: session.user.id
+        });
         if (error) throw new Error(error.message);
       }
 

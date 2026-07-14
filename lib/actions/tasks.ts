@@ -21,27 +21,18 @@ import type { Task, TaskStatus } from '@/types';
 
 export async function createTask(familyId: string, title: string, assignee?: string, list_id?: string, parent_id?: string): Promise<Task> {
   const supabase = createClient();
-  
-  // Strip undefined values to prevent PostgREST "DEFAULT" error
-  const payload: any = { 
-    family_id: familyId,
-    household_id: familyId,
-    title,
-    position: Math.floor(Date.now() / 1000)
-  };
-  
-  if (assignee !== undefined) payload.assignee = assignee;
-  if (list_id !== undefined) payload.list_id = list_id;
-  if (parent_id !== undefined) payload.parent_id = parent_id;
-
   const { data, error } = await supabase
-    .from('tasks')
-    .insert(payload)
-    .select()
+    .rpc('rpc_add_task', {
+      p_household_id: familyId,
+      p_title: title,
+      p_assignee: assignee || null,
+      p_list_id: list_id || null,
+      p_parent_id: parent_id || null
+    })
     .single();
 
   if (error) throw new Error(error.message);
-  return data;
+  return data as unknown as Task;
 }
 
 export async function updateTask(taskId: string, changes: Partial<Task>): Promise<Task> {
