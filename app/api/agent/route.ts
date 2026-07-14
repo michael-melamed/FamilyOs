@@ -82,9 +82,11 @@ export async function POST(req: Request) {
           family_id: householdId,
           name: prompt,
           quantity: null,
+          category: null,
           checked: false,
           created_by: session.user.id,
           created_at: now,
+          updated_at: now,
         });
         if (error) throw new Error(error.message);
       } else {
