@@ -75,25 +75,43 @@ export async function POST(req: Request) {
     // This definitively fixes "DEFAULT is not allowed in this context".
     // Security: auth + membership validated above.
     if (_dbHint === 'ADD_TASK' || _dbHint === 'ADD_SHOPPING') {
+      const now = new Date().toISOString();
       if (_dbHint === 'ADD_SHOPPING') {
-        const { error } = await adminSupabase.rpc('rpc_add_shopping_item', {
-          p_family_id: householdId,
-          p_name: prompt,
-          p_created_by: session.user.id
-        });
+        const payload = {
+          id: crypto.randomUUID(),
+          family_id: householdId,
+          name: prompt,
+          quantity: null,
+          checked: false,
+          created_by: session.user.id,
+          created_at: now,
+          updated_at: now
+        };
+        console.log("SENDING FULL SHOPPING PAYLOAD TO DB (BYPASSING POSTGREST BUG):", payload);
+        const { error } = await adminSupabase.from('shopping_items').insert(payload);
         if (error) {
-          console.error("SUPABASE RPC ERROR:", error);
+          console.error("SUPABASE INSERT ERROR:", error);
           throw new Error(error.message);
         }
       } else {
-        const { error } = await adminSupabase.rpc('rpc_add_task', {
-          p_household_id: householdId,
-          p_title: prompt,
-          p_assignee: _assignee || null,
-          p_created_by: session.user.id
-        });
+        const payload = {
+          id: crypto.randomUUID(),
+          family_id: householdId,
+          household_id: householdId,
+          title: prompt,
+          status: 'pending',
+          assignee: _assignee || null,
+          parent_id: null,
+          list_id: null,
+          position: Math.floor(Date.now() / 1000),
+          created_by: session.user.id,
+          created_at: now,
+          updated_at: now
+        };
+        console.log("SENDING FULL TASK PAYLOAD TO DB (BYPASSING POSTGREST BUG):", payload);
+        const { error } = await adminSupabase.from('tasks').insert(payload);
         if (error) {
-          console.error("SUPABASE RPC ERROR:", error);
+          console.error("SUPABASE INSERT ERROR:", error);
           throw new Error(error.message);
         }
       }

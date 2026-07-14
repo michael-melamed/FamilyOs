@@ -17,20 +17,33 @@ import type { ShoppingItem } from '@/types';
 
 export async function addShoppingItem(familyId: string, name: string, quantity?: string, category?: string): Promise<ShoppingItem> {
   const supabase = createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  const now = new Date().toISOString();
+  const payload = {
+    id: crypto.randomUUID(),
+    family_id: familyId,
+    name,
+    quantity: quantity || null,
+    checked: false,
+    created_by: session?.user?.id || null,
+    created_at: now,
+    updated_at: now
+  };
+
+  console.log("SENDING FULL SHOPPING PAYLOAD TO DB (BYPASSING POSTGREST BUG):", payload);
+
   const { data, error } = await supabase
-    .rpc('rpc_add_shopping_item', {
-      p_family_id: familyId,
-      p_name: name,
-      p_quantity: quantity || null,
-      p_category: category || null
-    })
+    .from('shopping_items')
+    .insert(payload)
+    .select()
     .single();
 
   if (error) {
-    console.error("SUPABASE RPC ERROR:", error);
+    console.error("SUPABASE INSERT ERROR:", error);
     throw new Error(error.message);
   }
-  return data as unknown as ShoppingItem;
+  return data;
 }
 
 export async function toggleShoppingItem(itemId: string, checked: boolean): Promise<ShoppingItem> {
