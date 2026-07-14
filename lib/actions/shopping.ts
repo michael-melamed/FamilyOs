@@ -17,31 +17,20 @@ import type { ShoppingItem } from '@/types';
 
 export async function addShoppingItem(familyId: string, name: string, quantity?: string, category?: string): Promise<ShoppingItem> {
   const supabase = createClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  
-  const payload: any = {
-    family_id: familyId,
-    name,
-    quantity,
-    category,
-    created_by: session?.user?.id
-  };
-
-  Object.keys(payload).forEach(key => payload[key] === undefined && delete payload[key]);
-  
-  console.log("SENDING SHOPPING PAYLOAD TO DB:", payload);
-
   const { data, error } = await supabase
-    .from('shopping_items')
-    .insert(payload)
-    .select()
+    .rpc('rpc_add_shopping_item', {
+      p_family_id: familyId,
+      p_name: name,
+      p_quantity: quantity || null,
+      p_category: category || null
+    })
     .single();
 
   if (error) {
-    console.error("SUPABASE INSERT ERROR:", error);
+    console.error("SUPABASE RPC ERROR:", error);
     throw new Error(error.message);
   }
-  return data;
+  return data as unknown as ShoppingItem;
 }
 
 export async function toggleShoppingItem(itemId: string, checked: boolean): Promise<ShoppingItem> {

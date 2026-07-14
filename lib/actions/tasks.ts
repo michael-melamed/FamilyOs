@@ -21,36 +21,21 @@ import type { Task, TaskStatus } from '@/types';
 
 export async function createTask(familyId: string, title: string, assignee?: string, list_id?: string, parent_id?: string): Promise<Task> {
   const supabase = createClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  
-  const payload: any = {
-    family_id: familyId,
-    household_id: familyId,
-    title,
-    assignee,
-    list_id,
-    parent_id,
-    created_by: session?.user?.id,
-    status: 'pending',
-    position: Math.floor(Date.now() / 1000)
-  };
-
-  // STRICT STRIPPING: Explicitly delete any keys from the payload that are undefined
-  Object.keys(payload).forEach(key => payload[key] === undefined && delete payload[key]);
-
-  console.log("SENDING PAYLOAD TO DB:", payload);
-
   const { data, error } = await supabase
-    .from('tasks')
-    .insert(payload)
-    .select()
+    .rpc('rpc_add_task', {
+      p_household_id: familyId,
+      p_title: title,
+      p_assignee: assignee || null,
+      p_list_id: list_id || null,
+      p_parent_id: parent_id || null
+    })
     .single();
 
   if (error) {
-    console.error("SUPABASE INSERT ERROR:", error);
+    console.error("SUPABASE RPC ERROR:", error);
     throw new Error(error.message);
   }
-  return data;
+  return data as unknown as Task;
 }
 
 export async function updateTask(taskId: string, changes: Partial<Task>): Promise<Task> {
