@@ -138,6 +138,7 @@ export function usePrompt(familyId: string | undefined, isAiMode: boolean, onSuc
         console.error('Agent error:', err);
         setError(err.message || 'Error communicating with Agent');
       }
+      setIsLoading(false);
     } finally {
       setIsLoading(false);
       // Clean up any remaining processing state just in case
