@@ -47,15 +47,21 @@ export function usePrompt(familyId: string | undefined, isAiMode: boolean, onSuc
     setPrompt('');
 
     try {
-      // DUMB MODE: Bypass agent completely, tell API to do direct insert
+      // DUMB MODE: Fast path with local rule-based intent recognition (no Claude call)
       if (!isAiMode) {
+        const evaluation = evaluateTask(rawPrompt);
+        const finalPrompt = evaluation.cleanText || rawPrompt;
+        const intent = evaluation.intent; // 'Add Shopping Item' | 'Add Task'
+        const assignee = evaluation.assignee;
+
         const res = await fetch('/api/agent', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            prompt: rawPrompt,
+            prompt: finalPrompt,
             familyId,
-            _dbHint: overrideType === 'shopping' ? 'ADD_SHOPPING' : 'ADD_TASK',
+            _dbHint: intent === 'Add Shopping Item' ? 'ADD_SHOPPING' : 'ADD_TASK',
+            _assignee: assignee,
           }),
         });
         if (!res.ok) {
