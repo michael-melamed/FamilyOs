@@ -22,12 +22,13 @@ type BoardProps = {
   shoppingItems: ShoppingItem[];
   lists?: any[];
   permissions?: any;
+  userRole?: string;
   familyId: string | undefined;
   isLoading: boolean;
   onUpdate: () => void;
 };
 
-export function Board({ tasks, shoppingItems, lists = [], permissions, familyId, isLoading, onUpdate }: BoardProps) {
+export function Board({ tasks, shoppingItems, lists = [], permissions, userRole = 'member', familyId, isLoading, onUpdate }: BoardProps) {
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] gap-4">

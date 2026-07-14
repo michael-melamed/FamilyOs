@@ -112,7 +112,7 @@ export default function DashboardPage() {
     window.location.href = '/login';
   };
 
-  const { tasks, shoppingItems, lists, permissions, isLoading, refetch, hasRecentUpdate, lastUpdatedBy } = useBoard({
+  const { tasks, shoppingItems, lists, permissions, isLoading, refetch, hasRecentUpdate, lastUpdatedBy, userRole } = useBoard({
     householdId,
     currentUserId,
     addNotification,
@@ -158,6 +158,7 @@ export default function DashboardPage() {
           shoppingItems={shoppingItems}
           lists={lists}
           permissions={permissions}
+          userRole={userRole}
           familyId={householdId}
           isLoading={isLoading}
           onUpdate={() => refetch(false)}
