@@ -22,18 +22,13 @@ import type { Task, TaskStatus } from '@/types';
 export async function createTask(familyId: string, title: string, assignee?: string, list_id?: string, parent_id?: string): Promise<Task> {
   const supabase = createClient();
   const { data, error } = await supabase
-    .from('tasks')
-    .insert({
-      family_id: familyId,
-      household_id: familyId,
-      title,
-      assignee: assignee || null,
-      list_id: list_id || null,
-      parent_id: parent_id || null,
-      // position needs to fit in a 32-bit integer (max ~2.14 billion). Date.now() is ~1.7 trillion.
-      position: Math.floor(Date.now() / 1000)
+    .rpc('rpc_add_task', {
+      p_household_id: familyId,
+      p_title: title,
+      p_assignee: assignee || null,
+      p_list_id: list_id || null,
+      p_parent_id: parent_id || null
     })
-    .select()
     .single();
 
   if (error) throw new Error(error.message);

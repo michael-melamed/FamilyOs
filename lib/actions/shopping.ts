@@ -18,18 +18,12 @@ import type { ShoppingItem } from '@/types';
 export async function addShoppingItem(familyId: string, name: string, quantity?: string, category?: string): Promise<ShoppingItem> {
   const supabase = createClient();
   const { data, error } = await supabase
-    .from('shopping_items')
-    .insert({
-      id: crypto.randomUUID(),
-      family_id: familyId,
-      name,
-      quantity: quantity || null,
-      category: category || null,
-      checked: false,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+    .rpc('rpc_add_shopping_item', {
+      p_family_id: familyId,
+      p_name: name,
+      p_quantity: quantity || null,
+      p_category: category || null
     })
-    .select()
     .single();
 
   if (error) throw new Error(error.message);
