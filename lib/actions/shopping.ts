@@ -20,10 +20,14 @@ export async function addShoppingItem(familyId: string, name: string, quantity?:
   const { data, error } = await supabase
     .from('shopping_items')
     .insert({
+      id: crypto.randomUUID(),
       family_id: familyId,
       name,
       quantity: quantity || null,
-      category: category || null
+      category: category || null,
+      checked: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     })
     .select()
     .single();
