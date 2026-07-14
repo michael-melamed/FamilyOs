@@ -16,7 +16,6 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { evaluateTask } from '@/lib/agent/router';
-import { createTask, deleteTask } from '@/lib/actions/tasks';
 
 export function usePrompt(familyId: string | undefined, onSuccess: (summary: string) => void) {
   const [prompt, setPrompt] = useState('');
@@ -56,16 +55,28 @@ export function usePrompt(familyId: string | undefined, onSuccess: (summary: str
     setPrompt('');
 
     try {
+
       if (evaluation.route === 'DB') {
-        // Direct DB insert without AI Latency
+        // Even for simple DB inserts, go through /api/agent so we never call
+        // 'use server' functions directly from a Client Component (causes 500).
         const finalPrompt = evaluation.cleanText || rawPrompt;
+        const intent = evaluation.intent; // 'Add Shopping Item' | 'Add Task'
         const assignee = evaluation.assignee;
-        
-        if (evaluation.intent === 'Add Shopping Item') {
-          const { addShoppingItem } = await import('@/lib/actions/shopping');
-          await addShoppingItem(familyId, finalPrompt);
-        } else {
-          await createTask(familyId, finalPrompt, assignee);
+
+        const res = await fetch('/api/agent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: finalPrompt,
+            familyId,
+            // Hint the route so the API can skip Claude and go straight to DB
+            _dbHint: intent === 'Add Shopping Item' ? 'ADD_SHOPPING' : 'ADD_TASK',
+            _assignee: assignee,
+          }),
+        });
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}));
+          throw new Error(d.error || 'שגיאה בשמירה');
         }
         setIsLoading(false);
         return;
