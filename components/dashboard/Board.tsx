@@ -59,7 +59,7 @@ export function Board({ tasks, shoppingItems, lists = [], permissions, familyId,
         familyId={familyId} 
         onUpdate={onUpdate} 
         is_locked={shoppingList?.is_locked}
-        can_clear_lists={permissions?.can_clear_lists !== false}
+        can_clear_lists={permissions?.can_clear_lists !== false || userRole === 'admin'}
       />
     </div>
   );

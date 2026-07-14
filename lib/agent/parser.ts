@@ -63,7 +63,7 @@ Rules:
 10. For ADD_TASK: if the user mentions a specific list name (e.g. "לרשימת X", "ברשימה X"), set list_id to that list's UUID from the available lists below. If no list is specified, set list_id to null.
 11. "תיצור רשימה בשם X" or "רשימה חדשה בשם X" → CREATE_LIST
 12. "תמחק את רשימת X" or "להסיר את רשימת X" → DELETE_LIST
-13. "תנקה את רשימת X" or "תרוקן את רשימת X" → CLEAR_LIST
+13. "תנקה את רשימת X" or "תרוקן את רשימת X" → CLEAR_LIST. For shopping list specifically: "נקה את רשימת הקניות" or "תרוקן את הקניות" MUST map to CLEAR_LIST with list_id set to "INFER:קניות".
 14. "תשנה את שם הרשימה X ל-Y" → RENAME_LIST
 15. "תשנה את שם הבית ל-Y" or "שם הקבוצה ל-Y" → RENAME_HOUSEHOLD
 16. "תמחק את המשימה X" or "תסיר את המשימה X" → DELETE_TASK

@@ -57,7 +57,7 @@ BEGIN
     -- (We assume standard column names exist based on table type)
     IF e_type = 'task' THEN
         h_id := act_record.household_id;
-        a_id := act_record.created_by;
+        a_id := COALESCE(auth.uid(), act_record.created_by);
         a_name := COALESCE(act_record.assignee, 'חבר משפחה');
         e_title := act_record.title;
         
@@ -74,7 +74,7 @@ BEGIN
 
     ELSIF e_type = 'shopping_item' THEN
         h_id := act_record.family_id; -- In our schema, family_id = household_id
-        a_id := act_record.created_by;
+        a_id := COALESCE(auth.uid(), act_record.created_by);
         a_name := 'חבר משפחה'; -- No explicit assignee for shopping
         e_title := act_record.name;
 
@@ -90,7 +90,7 @@ BEGIN
 
     ELSIF e_type = 'list' THEN
         h_id := act_record.household_id;
-        a_id := act_record.created_by;
+        a_id := COALESCE(auth.uid(), act_record.created_by);
         a_name := 'מנהל';
         e_title := act_record.name;
         json_details := '{}'::jsonb;

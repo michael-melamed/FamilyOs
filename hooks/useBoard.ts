@@ -100,6 +100,7 @@ export function useBoard({ householdId, currentUserId, addNotification }: UseBoa
 
   const [hasRecentUpdate, setHasRecentUpdate] = useState(false);
   const [lastUpdatedBy, setLastUpdatedBy] = useState<string | undefined>();
+  const [userRole, setUserRole] = useState<string>('member');
 
   // Debounce: track last notification time per table to avoid flooding
   const lastNotifTime = useRef<Record<string, number>>({});
@@ -125,13 +126,18 @@ export function useBoard({ householdId, currentUserId, addNotification }: UseBoa
       if (currentUserId && !isRealtimeUpdate) {
         const { data: memberData } = await supabase
           .from('household_members')
-          .select('notification_preferences')
+          .select('notification_preferences, role')
           .eq('household_id', householdId)
           .eq('user_id', currentUserId)
           .single();
         
-        if (memberData?.notification_preferences) {
-          setNotificationPrefs(memberData.notification_preferences as NotificationPreferences);
+        if (memberData) {
+          if (memberData.notification_preferences) {
+            setNotificationPrefs(memberData.notification_preferences as NotificationPreferences);
+          }
+          if (memberData.role) {
+            setUserRole(memberData.role);
+          }
         }
       }
 
@@ -180,5 +186,16 @@ export function useBoard({ householdId, currentUserId, addNotification }: UseBoa
   useRealtimeTable('shopping_items', householdId ?? null, handleRealtimeEvent);
   useRealtimeTable('lists', householdId ?? null, handleRealtimeEvent);
 
-  return { tasks, shoppingItems, lists, permissions, notificationPrefs, isLoading, refetch, hasRecentUpdate, lastUpdatedBy };
+  return {
+    tasks,
+    shoppingItems,
+    lists,
+    permissions,
+    isLoading,
+    refetch,
+    hasRecentUpdate,
+    lastUpdatedBy,
+    notificationPrefs,
+    userRole
+  };
 }
