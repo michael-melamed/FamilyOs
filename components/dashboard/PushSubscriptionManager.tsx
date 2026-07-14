@@ -1,5 +1,13 @@
 'use client';
 
+// Push notifications have been temporarily disabled.
+// The component is stubbed to prevent undefined component errors in parent layouts.
+
+export function PushSubscriptionManager({ householdId }: { householdId: string }) {
+  return null;
+}
+
+/* 
 import { useState, useEffect } from 'react';
 
 // Base64 to Uint8Array converter
@@ -141,3 +149,4 @@ export function PushSubscriptionManager({ householdId }: { householdId: string }
     </div>
   );
 }
+*/

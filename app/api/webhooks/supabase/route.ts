@@ -20,6 +20,8 @@ if (vapidPublicKey && vapidPrivateKey) {
 }
 
 export async function POST(req: Request) {
+  return NextResponse.json({ message: 'Push notifications disabled' });
+  /*
   try {
     const payload = await req.json();
 
@@ -130,4 +132,5 @@ export async function POST(req: Request) {
     console.error('Webhook error:', err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
+  */
 }

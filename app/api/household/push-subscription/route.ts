@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server';
 import type { ApiResponse } from '@/types';
 
 export async function POST(req: Request) {
+  return NextResponse.json({ message: 'Push notifications disabled' });
+  /*
   try {
     const supabase = createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -36,9 +38,12 @@ export async function POST(req: Request) {
     console.error('Error saving push subscription:', err);
     return NextResponse.json({ error: err.message } satisfies ApiResponse, { status: 500 });
   }
+  */
 }
 
 export async function DELETE(req: Request) {
+  return NextResponse.json({ message: 'Push notifications disabled' });
+  /*
   try {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -63,7 +68,7 @@ export async function DELETE(req: Request) {
 
     return NextResponse.json({ data: { success: true } });
   } catch (err: any) {
-    console.error('Error deleting push subscription:', err);
     return NextResponse.json({ error: err.message } satisfies ApiResponse, { status: 500 });
   }
+  */
 }

@@ -51,9 +51,10 @@ export default function RootLayout({
       <body className="bg-calm-bg text-calm-text">
         {children}
         
-        {/* PWA Service Worker Registration */}
+        {/* PWA Service Worker Registration - Push Notifications Disabled */}
+        {/*
         <Script id="register-sw" strategy="afterInteractive">
-          {`
+          {\`
             if ('serviceWorker' in navigator) {
               window.addEventListener('load', function() {
                 navigator.serviceWorker.register('/sw.js?v=3').then(
@@ -68,8 +69,9 @@ export default function RootLayout({
                 );
               });
             }
-          `}
+          \`}
         </Script>
+        */}
       </body>
     </html>
   )
