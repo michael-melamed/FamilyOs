@@ -90,7 +90,7 @@ export function ShoppingList({ items, familyId, onUpdate, is_locked = false, can
                 {catItems.map((item, index) => (
                   <div 
                     key={item.id} 
-                    className={`w-full p-4 flex items-center gap-4 cursor-pointer hover:bg-neutral-50 transition-colors ${index !== catItems.length - 1 ? 'border-b border-neutral-50' : ''}`}
+                    className={`w-full p-4 flex items-center gap-4 cursor-pointer hover:bg-neutral-50 transition-colors ${index !== catItems.length - 1 ? 'border-b border-neutral-50' : ''} ${(item as any).isOptimistic ? 'opacity-50 pointer-events-none' : ''}`}
                     onClick={() => handleToggle(item)}
                   >
                     <button 

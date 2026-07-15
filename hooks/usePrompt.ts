@@ -16,8 +16,14 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { evaluateTask } from '@/lib/agent/router';
+import { createClient } from '@/lib/supabase/client';
 
-export function usePrompt(familyId: string | undefined, isAiMode: boolean, onSuccess: (summary: string) => void) {
+export function usePrompt(
+  familyId: string | undefined, 
+  isAiMode: boolean, 
+  onSuccess: (summary: string) => void,
+  onOptimisticSubmit?: (intent: 'ADD_TASK' | 'ADD_SHOPPING', title: string, assignee?: string) => void
+) {
   const [prompt, setPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,8 +49,8 @@ export function usePrompt(familyId: string | undefined, isAiMode: boolean, onSuc
 
     setIsLoading(true);
     setError(null);
+    // Do not clear prompt here, clear it upon success or keep it if error
     const rawPrompt = prompt;
-    setPrompt('');
 
     try {
       // DUMB MODE: Fast path with local rule-based intent recognition (no Claude call)
@@ -53,22 +59,33 @@ export function usePrompt(familyId: string | undefined, isAiMode: boolean, onSuc
         const finalPrompt = evaluation.cleanText || rawPrompt;
         const intent = evaluation.intent; // 'Add Shopping Item' | 'Add Task'
         const assignee = evaluation.assignee;
+        const mappedIntent = intent === 'Add Shopping Item' ? 'ADD_SHOPPING' : 'ADD_TASK';
 
-        const res = await fetch('/api/agent', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            prompt: finalPrompt,
-            familyId,
-            _dbHint: intent === 'Add Shopping Item' ? 'ADD_SHOPPING' : 'ADD_TASK',
-            _assignee: assignee,
-          }),
-        });
-        if (!res.ok) {
-          const d = await res.json().catch(() => ({}));
-          throw new Error(d.error || 'שגיאה בשמירה');
+        // 1. Optimistic UI Update
+        if (onOptimisticSubmit) {
+          onOptimisticSubmit(mappedIntent, finalPrompt, assignee);
         }
+
+        // 2. Direct DB Call (Bypass API Route)
+        const supabase = createClient();
+        if (mappedIntent === 'ADD_SHOPPING') {
+          const { error } = await supabase.rpc('rpc_add_shopping_item', {
+            p_family_id: familyId,
+            p_name: finalPrompt,
+            // rpc handles created_by via auth.uid() automatically
+          });
+          if (error) throw new Error(error.message || 'שגיאה בשמירה');
+        } else {
+          const { error } = await supabase.rpc('rpc_add_task', {
+            p_household_id: familyId,
+            p_title: finalPrompt,
+            p_assignee: assignee || null,
+          });
+          if (error) throw new Error(error.message || 'שגיאה בשמירה');
+        }
+
         setIsLoading(false);
+        setPrompt(''); // clear input only on success
         return;
       }
 
@@ -102,6 +119,7 @@ export function usePrompt(familyId: string | undefined, isAiMode: boolean, onSuc
           throw new Error(d.error || 'שגיאה בשמירה');
         }
         setIsLoading(false);
+        setPrompt('');
         return;
       }
 
@@ -129,6 +147,7 @@ export function usePrompt(familyId: string | undefined, isAiMode: boolean, onSuc
       window.dispatchEvent(new CustomEvent('ai-processing-stop'));
 
       if (data.summary) {
+        setPrompt('');
         onSuccess(data.summary);
       }
     } catch (err: any) {

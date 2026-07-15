@@ -93,6 +93,8 @@ function buildMessage(payload: RealtimePayload, prefs: NotificationPreferences):
 export function useBoard({ householdId, currentUserId, addNotification }: UseBoardOptions) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>([]);
+  const [optimisticTasks, setOptimisticTasks] = useState<Task[]>([]);
+  const [optimisticShoppingItems, setOptimisticShoppingItems] = useState<ShoppingItem[]>([]);
   const [lists, setLists] = useState<any[]>([]);
   const [permissions, setPermissions] = useState<any>(null);
   const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences>(DEFAULT_PREFS);
@@ -141,8 +143,14 @@ export function useBoard({ householdId, currentUserId, addNotification }: UseBoa
         }
       }
 
-      if (tasksRes.data) setTasks(tasksRes.data as Task[]);
-      if (shoppingRes.data) setShoppingItems(shoppingRes.data as ShoppingItem[]);
+      if (tasksRes.data) {
+        setTasks(tasksRes.data as Task[]);
+        setOptimisticTasks([]);
+      }
+      if (shoppingRes.data) {
+        setShoppingItems(shoppingRes.data as ShoppingItem[]);
+        setOptimisticShoppingItems([]);
+      }
       if (listsRes.data) setLists(listsRes.data);
       if (permsRes.data) setPermissions(permsRes.data);
     } catch (err) {
@@ -186,9 +194,38 @@ export function useBoard({ householdId, currentUserId, addNotification }: UseBoa
   useRealtimeTable('shopping_items', householdId ?? null, handleRealtimeEvent);
   useRealtimeTable('lists', householdId ?? null, handleRealtimeEvent);
 
+  const addOptimisticItem = useCallback((intent: 'ADD_TASK' | 'ADD_SHOPPING', title: string, assignee?: string) => {
+    if (intent === 'ADD_TASK') {
+      const tempTask = {
+        id: `temp-${Date.now()}`,
+        title,
+        assignee: assignee || null,
+        family_id: householdId || '',
+        household_id: householdId || '',
+        status: 'todo',
+        created_at: new Date().toISOString(),
+        isOptimistic: true
+      } as unknown as Task;
+      setOptimisticTasks(prev => [...prev, tempTask]);
+    } else if (intent === 'ADD_SHOPPING') {
+      const tempItem = {
+        id: `temp-${Date.now()}`,
+        name: title,
+        family_id: householdId || '',
+        checked: false,
+        created_at: new Date().toISOString(),
+        isOptimistic: true
+      } as unknown as ShoppingItem;
+      setOptimisticShoppingItems(prev => [...prev, tempItem]);
+    }
+  }, [householdId]);
+
+  const combinedTasks = useMemo(() => [...tasks, ...optimisticTasks], [tasks, optimisticTasks]);
+  const combinedShoppingItems = useMemo(() => [...shoppingItems, ...optimisticShoppingItems], [shoppingItems, optimisticShoppingItems]);
+
   return {
-    tasks,
-    shoppingItems,
+    tasks: combinedTasks,
+    shoppingItems: combinedShoppingItems,
     lists,
     permissions,
     isLoading,
@@ -196,6 +233,7 @@ export function useBoard({ householdId, currentUserId, addNotification }: UseBoa
     hasRecentUpdate,
     lastUpdatedBy,
     notificationPrefs,
-    userRole
+    userRole,
+    addOptimisticItem
   };
 }

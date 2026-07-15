@@ -112,7 +112,7 @@ export default function DashboardPage() {
     window.location.href = '/login';
   };
 
-  const { tasks, shoppingItems, lists, permissions, isLoading, refetch, hasRecentUpdate, lastUpdatedBy, userRole } = useBoard({
+  const { tasks, shoppingItems, lists, permissions, isLoading, refetch, hasRecentUpdate, lastUpdatedBy, userRole, addOptimisticItem } = useBoard({
     householdId,
     currentUserId,
     addNotification,
@@ -168,6 +168,7 @@ export default function DashboardPage() {
       <PromptBar
         familyId={householdId}
         onAgentResponse={handleAgentResponse}
+        onOptimisticSubmit={addOptimisticItem}
       />
 
       {/* Real-time notification toasts — only shown for changes made by OTHER household members */}

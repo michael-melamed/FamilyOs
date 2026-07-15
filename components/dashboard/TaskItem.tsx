@@ -110,7 +110,7 @@ export function TaskItem({ task, subTasks = [], onUpdate, can_delete = false, dr
   const isParent = subTasks.length > 0;
 
   return (
-    <div className={`flex flex-col border-b border-[#C8D4E8] last:border-b-0 group ${isDone ? 'bg-[#F9FAFB]' : 'bg-white hover:bg-[#F4F7FB] transition-colors'} rounded-sm`}>
+    <div className={`flex flex-col border-b border-[#C8D4E8] last:border-b-0 group ${isDone ? 'bg-[#F9FAFB]' : 'bg-white hover:bg-[#F4F7FB] transition-colors'} rounded-sm ${(task as any).isOptimistic ? 'opacity-50 pointer-events-none' : ''}`}>
       <div className="flex items-center justify-between py-3 px-4">
         
         <div className="flex items-center gap-3 flex-1 overflow-hidden">

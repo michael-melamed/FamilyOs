@@ -15,11 +15,12 @@ import { usePrompt } from '@/hooks/usePrompt';
 type PromptBarProps = {
   familyId: string | undefined;
   onAgentResponse: (summary: string) => void;
+  onOptimisticSubmit?: (intent: 'ADD_TASK' | 'ADD_SHOPPING', title: string, assignee?: string) => void;
 };
 
-export function PromptBar({ familyId, onAgentResponse }: PromptBarProps) {
+export function PromptBar({ familyId, onAgentResponse, onOptimisticSubmit }: PromptBarProps) {
   const [isAiMode, setIsAiMode] = useState(false);
-  const { prompt, setPrompt, submit, isLoading, error } = usePrompt(familyId, isAiMode, onAgentResponse);
+  const { prompt, setPrompt, submit, isLoading, error } = usePrompt(familyId, isAiMode, onAgentResponse, onOptimisticSubmit);
   const inputRef = useRef<HTMLInputElement>(null);
   const [processingPrompt, setProcessingPrompt] = useState<string | null>(null);
 
