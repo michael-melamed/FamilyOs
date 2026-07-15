@@ -161,9 +161,14 @@ export async function parsePrompt(
     const userContext = `${memoryContext}\n\n${taskContext}\n\n${shoppingContext}\n\nUser request: "${prompt}"`;
     const result = await model.generateContent(userContext);
     
-    const rawJson = result.response.text();
+    let rawJson = result.response.text().trim();
+    if (rawJson.startsWith('```json')) {
+      rawJson = rawJson.replace(/^```json\n?/, '').replace(/```$/, '').trim();
+    } else if (rawJson.startsWith('```')) {
+      rawJson = rawJson.replace(/^```\n?/, '').replace(/```$/, '').trim();
+    }
 
-    const parsedOutput = JSON.parse(rawJson.trim()) as AgentOutput;
+    const parsedOutput = JSON.parse(rawJson) as AgentOutput;
 
     parsedOutput.actions = parsedOutput.actions.map(action => {
       // Inferred task ids
