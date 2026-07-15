@@ -98,30 +98,8 @@ export function usePrompt(
         return;
       }
 
-      if (evaluation.route === 'DB') {
-        const finalPrompt = evaluation.cleanText || rawPrompt;
-        const intent = evaluation.intent; 
-        const assignee = evaluation.assignee;
-
-        const res = await fetch('/api/agent', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            prompt: finalPrompt,
-            familyId,
-            // Hint the route so the API can skip Claude and go straight to DB
-            _dbHint: intent === 'Add Shopping Item' ? 'ADD_SHOPPING' : 'ADD_TASK',
-            _assignee: assignee,
-          }),
-        });
-        if (!res.ok) {
-          const d = await res.json().catch(() => ({}));
-          throw new Error(d.error || 'שגיאה בשמירה');
-        }
-        setIsLoading(false);
-        setPrompt('');
-        return;
-      }
+      // If user explicitly turned ON the AI mode, we send it to Claude,
+      // regardless of whether evaluateTask thought it was a simple 'DB' task!
 
       // Route === 'AI'
       // Dispatch ai-processing-start to UI with the prompt text

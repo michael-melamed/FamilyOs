@@ -154,7 +154,7 @@ export async function parsePrompt(
     const anthropic = new Anthropic({ apiKey });
 
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: 'claude-3-5-sonnet-20241022',
       max_tokens: 1000,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: `${memoryContext}\n\n${taskContext}\n\n${shoppingContext}\n\nUser request: "${prompt}"` }],
@@ -214,24 +214,9 @@ export async function parsePrompt(
     // Claude API unavailable (wrong key, model 404, quota) → fall back to local parser
     console.warn('⚠️ Claude API error, using local fallback:', apiErr?.status ?? apiErr?.message);
 
-    const lowerPrompt = prompt.toLowerCase();
-    const actions: AgentAction[] = [];
-
-    if (lowerPrompt.includes('קנה') || lowerPrompt.includes('תקנה') || lowerPrompt.includes('לקניות') || lowerPrompt.includes('חסר')) {
-      actions.push({ type: 'ADD_SHOPPING', item: prompt });
-    } else if (lowerPrompt.includes('סיימתי') || lowerPrompt.includes('גמרתי') || lowerPrompt.includes('הושלם') || lowerPrompt.includes('עשיתי')) {
-      if (currentTasks.length > 0) {
-        actions.push({ type: 'COMPLETE_TASK', task_id: currentTasks[0].id });
-      } else {
-        actions.push({ type: 'NO_ACTION', message: 'אין משימות פעילות' });
-      }
-    } else {
-      actions.push({ type: 'ADD_TASK', title: prompt, list_id: availableLists[0]?.id });
-    }
-
     const fallback: AgentOutput = {
-      actions,
-      summary: '⚠️ Claude API לא זמין — הפעולה בוצעה מקומית',
+      actions: [{ type: 'NO_ACTION', message: 'שגיאת AI' }],
+      summary: '⚠️ חיבור ה-AI נכשל (או שהמודל לא זמין). אנא כבה את מתג ה-AI כדי להוסיף משימות רגילות.',
     };
 
     const supabase = createClient();
