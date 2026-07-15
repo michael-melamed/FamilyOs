@@ -23,6 +23,8 @@ type TaskItemProps = {
 
 export function TaskItem({ task, subTasks = [], onUpdate, can_delete = false, dragHandleProps }: TaskItemProps) {
   const [isCompleting, setIsCompleting] = useState(false);
+  const [optimisticStatus, setOptimisticStatus] = useState<string | null>(null);
+  const [optimisticSubStatuses, setOptimisticSubStatuses] = useState<Record<string, string>>({});
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(task.title);
   const [isSaving, setIsSaving] = useState(false);
@@ -50,7 +52,13 @@ export function TaskItem({ task, subTasks = [], onUpdate, can_delete = false, dr
   };
 
   // Derive if this task is fully completed (either natively done, or it has subtasks and all are done)
-  const isDone = task.status === 'done' || (subTasks.length > 0 && subTasks.every(st => st.status === 'done'));
+  const currentStatus = optimisticStatus || task.status;
+  const currentSubTasks = subTasks.map(st => ({
+    ...st,
+    status: optimisticSubStatuses[st.id] || st.status
+  }));
+
+  const isDone = currentStatus === 'done' || (currentSubTasks.length > 0 && currentSubTasks.every(st => st.status === 'done'));
 
   // If this task was auto-completed by its subtasks but DB status isn't done, update it silently
   useEffect(() => {
@@ -63,16 +71,15 @@ export function TaskItem({ task, subTasks = [], onUpdate, can_delete = false, dr
     if (isCompleting) return;
     
     setIsCompleting(true);
+    const newStatus = isDone ? 'pending' : 'done';
+    setOptimisticStatus(newStatus);
     
     try {
-      if (isDone) {
-        await updateTask(task.id, { status: 'pending' });
-      } else {
-        await updateTask(task.id, { status: 'done' });
-      }
+      await updateTask(task.id, { status: newStatus });
       onUpdate();
     } catch (err) {
       console.error('Failed toggling task:', err);
+      setOptimisticStatus(null);
     } finally {
       setIsCompleting(false);
     }
@@ -188,12 +195,22 @@ export function TaskItem({ task, subTasks = [], onUpdate, can_delete = false, dr
       {/* Render subtasks */}
       {isParent && (
         <div className="flex flex-col pb-2 pr-12 pl-4">
-          {subTasks.map((subTask) => (
+          {currentSubTasks.map((subTask) => (
             <div key={subTask.id} className="flex items-center gap-3 py-2 border-t border-dashed border-gray-100 first:border-t-0">
               <button 
                 onClick={async () => {
-                  await updateTask(subTask.id, { status: subTask.status === 'done' ? 'pending' : 'done' });
-                  onUpdate();
+                  const newSubStatus = subTask.status === 'done' ? 'pending' : 'done';
+                  setOptimisticSubStatuses(prev => ({ ...prev, [subTask.id]: newSubStatus }));
+                  try {
+                    await updateTask(subTask.id, { status: newSubStatus });
+                    onUpdate();
+                  } catch (e) {
+                    setOptimisticSubStatuses(prev => {
+                      const copy = { ...prev };
+                      delete copy[subTask.id];
+                      return copy;
+                    });
+                  }
                 }}
                 className={`w-5 h-5 shrink-0 rounded-full border-2 flex items-center justify-center transition-colors ${subTask.status === 'done' ? 'border-brand-teal bg-brand-teal text-white' : 'border-[#C8D4E8] text-transparent hover:border-[#1A7A4A]'}`}
               >

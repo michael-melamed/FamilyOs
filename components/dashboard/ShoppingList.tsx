@@ -26,13 +26,23 @@ type ShoppingListProps = {
 
 export function ShoppingList({ items, familyId, onUpdate, is_locked = false, can_clear_lists = true }: ShoppingListProps) {
   const [isClearing, setIsClearing] = useState(false);
+  const [optimisticToggles, setOptimisticToggles] = useState<Record<string, boolean>>({});
 
   const handleToggle = async (item: ShoppingItem) => {
+    const newChecked = !item.checked;
+    setOptimisticToggles(prev => ({ ...prev, [item.id]: newChecked }));
+    
     try {
-      await toggleShoppingItem(item.id, !item.checked);
+      await toggleShoppingItem(item.id, newChecked);
       onUpdate();
     } catch (err) {
       console.error('Failed toggling map error:', err);
+      // Revert on failure
+      setOptimisticToggles(prev => {
+        const copy = { ...prev };
+        delete copy[item.id];
+        return copy;
+      });
     }
   };
 
@@ -87,28 +97,32 @@ export function ShoppingList({ items, familyId, onUpdate, is_locked = false, can
                 </div>
               )}
               <div className="flex flex-col">
-                {catItems.map((item, index) => (
-                  <div 
-                    key={item.id} 
-                    className={`w-full p-4 flex items-center gap-4 cursor-pointer hover:bg-neutral-50 transition-colors ${index !== catItems.length - 1 ? 'border-b border-neutral-50' : ''} ${(item as any).isOptimistic ? 'opacity-50 pointer-events-none' : ''}`}
-                    onClick={() => handleToggle(item)}
-                  >
-                    <button 
-                      className={`w-7 h-7 shrink-0 rounded-xl border-2 flex items-center justify-center transition-colors ${item.checked ? 'bg-brand-teal border-brand-teal text-white' : 'border-neutral-200 text-transparent hover:border-brand-teal'}`}
-                      aria-label="החלף פריט קניות"
+                {catItems.map((item, index) => {
+                  const isChecked = optimisticToggles[item.id] !== undefined ? optimisticToggles[item.id] : item.checked;
+                  
+                  return (
+                    <div 
+                      key={item.id} 
+                      className={`w-full p-4 flex items-center gap-4 cursor-pointer hover:bg-neutral-50 transition-colors ${index !== catItems.length - 1 ? 'border-b border-neutral-50' : ''} ${(item as any).isOptimistic ? 'opacity-50 pointer-events-none' : ''}`}
+                      onClick={() => handleToggle(item)}
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
-                    </button>
-                    <div className={`flex-1 font-medium transition-all flex items-center justify-between ${item.checked ? 'opacity-60' : ''}`}>
-                      <span className={`text-calm-text ${item.checked ? 'line-through text-muted-warm' : ''}`}>{item.name}</span>
-                      {item.quantity && (
-                        <span className={`text-xs px-2 py-0.5 rounded-full border ${item.checked ? 'border-neutral-300 text-muted-warm' : 'bg-calm-bg border-neutral-200 text-muted-warm'}`}>
-                          ({item.quantity})
-                        </span>
-                      )}
+                      <button 
+                        className={`w-7 h-7 shrink-0 rounded-xl border-2 flex items-center justify-center transition-colors ${isChecked ? 'bg-brand-teal border-brand-teal text-white' : 'border-neutral-200 text-transparent hover:border-brand-teal'}`}
+                        aria-label="החלף פריט קניות"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
+                      </button>
+                      <div className={`flex-1 font-medium transition-all flex items-center justify-between ${isChecked ? 'opacity-60' : ''}`}>
+                        <span className={`text-calm-text ${isChecked ? 'line-through text-muted-warm' : ''}`}>{item.name}</span>
+                        {item.quantity && (
+                          <span className={`text-xs px-2 py-0.5 rounded-full border ${isChecked ? 'border-neutral-300 text-muted-warm' : 'bg-calm-bg border-neutral-200 text-muted-warm'}`}>
+                            ({item.quantity})
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ))}
