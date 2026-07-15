@@ -214,7 +214,7 @@ export async function parsePrompt(
 
     const fallback: AgentOutput = {
       actions: [{ type: 'NO_ACTION', message: 'שגיאת AI' }],
-      summary: '⚠️ חיבור ה-AI נכשל (או שהמודל לא זמין). אנא כבה את מתג ה-AI כדי להוסיף משימות רגילות.',
+      summary: '⚠️ חיבור ה-AI נכשל: ' + (apiErr?.message || 'Unknown error') + '. אנא ודא שהמפתח תקין.',
     };
 
     const supabase = createClient();
