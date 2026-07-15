@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { updateHouseholdName, updateMemberRole, removeMember } from '@/lib/actions/households';
 import { loadMemory, upsertMemory, deleteMemory } from '@/lib/actions/memory';
-import { PushSubscriptionManager } from '@/components/dashboard/PushSubscriptionManager';
 import type { FamilyMemory, NotificationPreferences } from '@/types';
 
 type List = { id: string; name: string; is_locked: boolean };
@@ -506,10 +505,7 @@ export default function HouseholdSettingsPage() {
                 <div className="space-y-4 relative">
                   {prefsSaved && <div className="absolute top-0 left-0 bg-brand-teal text-white text-xs px-2 py-1 rounded-lg animate-pulse">נשמר ✓</div>}
                   
-                  {/* Web Push Subscription Component */}
-                  <div className="mb-6">
-                    {householdId && <PushSubscriptionManager householdId={householdId} />}
-                  </div>
+                  {/* Web Push Subscription Component Removed */}
                   
                   <div className="space-y-3">
                     {[
