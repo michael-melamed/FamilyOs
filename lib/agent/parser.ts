@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@/lib/supabase/server';
 import { loadMemory } from '@/lib/actions/memory';
 import type { Task, List } from '@/types';
@@ -13,7 +13,7 @@ import type { AgentOutput, AgentAction } from './schema';
  * @depends_on lib/agent/schema.ts, lib/supabase/server.ts, ANTHROPIC_API_KEY env var
  * @used_by   app/api/agent/route.ts
  * @fix_guide
- *   - "API key not found" → check GEMINI_API_KEY in .env.local
+ *   - "API key not found" → check ANTHROPIC_API_KEY in .env.local
  *   - "404 model not_found_error" → update the model string below to the latest available Claude model
  *   - "JSON parse error" → Claude returned non-JSON; add retry logic or check system prompt
  *   - "task_id INFER:[...]" in actions → UI must resolve these against real task titles
@@ -86,9 +86,9 @@ export async function parsePrompt(
 
   const SYSTEM_PROMPT = `${BASE_SYSTEM_PROMPT}\n${listsContext}`;
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    console.log('No GEMINI_API_KEY found, running in local fallback mode...');
+    console.log('No ANTHROPIC_API_KEY found, running in local fallback mode...');
     const actions: AgentAction[] = [];
     const lowerPrompt = prompt.toLowerCase();
 
@@ -151,17 +151,20 @@ export async function parsePrompt(
     : 'The shopping list is currently empty.';
 
   try {
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ 
-      model: 'gemini-2.0-flash',
-      systemInstruction: SYSTEM_PROMPT,
-      generationConfig: { responseMimeType: "application/json" }
+    const anthropic = new Anthropic({ apiKey });
+
+    const message = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6', // We will test this locally first
+      max_tokens: 1000,
+      system: SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: `${memoryContext}\n\n${taskContext}\n\n${shoppingContext}\n\nUser request: "${prompt}"` }],
     });
 
-    const userContext = `${memoryContext}\n\n${taskContext}\n\n${shoppingContext}\n\nUser request: "${prompt}"`;
-    const result = await model.generateContent(userContext);
-    
-    let rawJson = result.response.text().trim();
+    let rawJson = '';
+    for (const block of message.content) {
+      if (block.type === 'text') rawJson += block.text;
+    }
+    rawJson = rawJson.trim();
     if (rawJson.startsWith('```json')) {
       rawJson = rawJson.replace(/^```json\n?/, '').replace(/```$/, '').trim();
     } else if (rawJson.startsWith('```')) {
@@ -214,8 +217,8 @@ export async function parsePrompt(
     return parsedOutput;
 
   } catch (apiErr: any) {
-    // Gemini API unavailable (wrong key, quota, etc) → fall back to local parser
-    console.warn('⚠️ Gemini API error, using local fallback:', apiErr?.status ?? apiErr?.message);
+    // Claude API unavailable (wrong key, model 404, quota) → fall back to local parser
+    console.warn('⚠️ Claude API error, using local fallback:', apiErr?.status ?? apiErr?.message);
 
     const fallback: AgentOutput = {
       actions: [{ type: 'NO_ACTION', message: 'שגיאת AI' }],
